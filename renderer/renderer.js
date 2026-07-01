@@ -119,12 +119,47 @@ function uygulamayaGec() {
 function kanalListesiniCiz() {
   elKanalListesi.innerHTML = '';
   window.APP_CONFIG.CHANNELS.forEach((kanal) => {
+    const disKapsayici = document.createElement('div');
+
     const oge = document.createElement('div');
     oge.className = 'kanal-ogesi' + (aktifKanal?.name === kanal.name ? ' aktif' : '');
     const simge = kanal.type === 'text' ? '💬' : '🔊';
     oge.innerHTML = `<span class="kanal-simge">${simge}</span><span>${kanal.name}</span>`;
-    oge.addEventListener('click', () => kanalaGec(kanal));
-    elKanalListesi.appendChild(oge);
+
+    const katilimciListesi = document.createElement('div');
+    katilimciListesi.className = 'kanal-katilimcilari';
+
+    // Tek tık: katılmadan sadece kimlerin içeride olduğunu göster/gizle
+    oge.addEventListener('click', async () => {
+      const acikMi = katilimciListesi.classList.contains('acik');
+      // Diğer kanalların açık önizlemelerini kapat
+      document.querySelectorAll('.kanal-katilimcilari.acik').forEach((el) => el.classList.remove('acik'));
+
+      if (acikMi) return; // zaten açıktı, sadece kapatmış olduk
+
+      katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Yükleniyor...</span>';
+      katilimciListesi.classList.add('acik');
+      try {
+        const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
+        const isimler = await resp.json();
+        if (isimler.length === 0) {
+          katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Kimse yok</span>';
+        } else {
+          katilimciListesi.innerHTML = isimler
+            .map((ad) => `<div class="kanal-katilimci-satiri">🟢 ${ad}</div>`)
+            .join('');
+        }
+      } catch (e) {
+        katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Alınamadı</span>';
+      }
+    });
+
+    // Çift tık: kanala gerçekten katıl
+    oge.addEventListener('dblclick', () => kanalaGec(kanal));
+
+    disKapsayici.appendChild(oge);
+    disKapsayici.appendChild(katilimciListesi);
+    elKanalListesi.appendChild(disKapsayici);
   });
 }
 

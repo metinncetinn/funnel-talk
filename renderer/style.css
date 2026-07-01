@@ -193,3 +193,21 @@ body {
   background: #1e1f22;
 }
 #splashAnimasyon { width: 480px; height: 480px; }
+
+
+.kanal-katilimcilari {
+  padding: 4px 10px 8px 34px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+}
+.kanal-katilimcilari.acik { display: flex; }
+.kanal-katilimci-satiri {
+  font-size: 12px;
+  color: #aaa;
+}
+.kanal-katilimci-yok {
+  font-size: 12px;
+  color: #666;
+  font-style: italic;
+}
