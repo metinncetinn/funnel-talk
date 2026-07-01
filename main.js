@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, desktopCapturer, shell } = require('electro
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const { autoUpdater } = require("electron-updater");
 
 // ==== GOOGLE ILE GIRIS AYARLARI ====
 // Google Cloud Console > APIs & Services > Credentials > Create Credentials
@@ -138,7 +139,11 @@ ipcMain.handle('google-login', async () => {
   });
 });
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+
+  autoUpdater.checkForUpdatesAndNotify();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
