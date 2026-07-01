@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<title>Funnel Talk</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="ekran-splash" class="ekran">
+    <div id="splashAnimasyon"></div>
+  </div>
+  <!-- GİRİŞ EKRANI -->
+  <div id="ekran-giris" class="ekran">
+    <div class="giris-kutu">
+      <h1>Sesli Oda</h1>
+      <label>Adın</label>
+      <input id="girisAd" type="text" placeholder="Adını yaz" maxlength="20" />
+      <button id="btnDevam" class="buton-ana">Devam Et</button>
+
+      <div id="googleGirisAlani" class="gizli">
+        <div class="ayrac">veya</div>
+        <button id="btnGoogleGiris" class="buton-google">Google ile Giriş Yap</button>
+      </div>
+
+      <p id="girisHata" class="hata-mesaji"></p>
+    </div>
+  </div>
+
+  <!-- ANA UYGULAMA -->
+  <div id="ekran-app" class="ekran gizli app-govde">
+    <div class="kenar-cubugu">
+      <div class="kullanici-bilgi">
+        <span id="aktifKullaniciAd">-</span>
+        <button id="btnCikisYap" class="buton-mini" title="Çıkış yap">⏻</button>
+      </div>
+      <div class="kanal-baslik">KANALLAR</div>
+      <div class="kanal-listesi" id="kanalListesi"></div>
+    </div>
+
+    <div class="ana-icerik">
+      <div class="ust-bar">
+        <span id="aktifKanalAdi">Bir kanal seç</span>
+        <div class="ust-bar-sag">
+          <button id="btnMikrofon" class="buton-ikon gizli" title="Mikrofonu kapat/aç">🎙️</button>
+          <button id="btnEkranPaylas" class="buton-ikon gizli" title="Ekran paylaş">🖥️</button>
+          <button id="btnSohbetAcKapat" class="buton-ikon" title="Sohbeti göster/gizle">💬</button>
+        </div>
+      </div>
+
+      <div class="govde">
+        <div id="katilimcilar" class="katilimcilar"></div>
+
+        <div id="yayinAlani" class="yayin-alani gizli">
+          <video id="yayinVideo" autoplay playsinline></video>
+        </div>
+
+        <div id="sohbetPaneli" class="sohbet-paneli">
+          <div id="sohbetMesajlari" class="sohbet-mesajlari"></div>
+          <div class="sohbet-giris">
+            <input id="sohbetInput" type="text" placeholder="Mesaj yaz..." maxlength="500" />
+            <button id="btnSohbetGonder">Gönder</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EKRAN KAYNAĞI SEÇİM PENCERESİ -->
+  <div id="kaynakSecimModal" class="modal gizli">
+    <div class="modal-kutu">
+      <h3>Neyi paylaşmak istersin?</h3>
+      <div id="kaynakListesi" class="kaynak-listesi"></div>
+      <button id="btnKaynakIptal" class="buton-ikincil">Vazgeç</button>
+    </div>
+  </div>
+  <script src="lottie.min.js"></script>
+  <script src="config.js"></script>
+  <script src="livekit-client.umd.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
