@@ -1,6 +1,6 @@
 {
   "name": "sesli-oda",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Arkadas grubu icin sesli/goruntulu sohbet ve ekran paylasimi uygulamasi.",
   "main": "main.js",
   "scripts": {
@@ -13,9 +13,9 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "livekit-client": "^2.5.0",
-    "lottie-web": "^5.13.0",
-    "electron-updater": "^6.3.0"
+    "lottie-web": "^5.13.0"
   },
   "build": {
     "appId": "com.metin.sesliodaapp",
