@@ -31,7 +31,10 @@
     <div class="kenar-cubugu">
       <div class="kullanici-bilgi">
         <span id="aktifKullaniciAd">-</span>
-        <button id="btnCikisYap" class="buton-mini" title="Çıkış yap">⏻</button>
+        <div class="kullanici-butonlari">
+          <button id="btnAyarlar" class="buton-mini" title="Ayarlar">⚙️</button>
+          <button id="btnCikisYap" class="buton-mini" title="Çıkış yap">⏻</button>
+        </div>
       </div>
       <div class="kanal-baslik">KANALLAR</div>
       <div class="kanal-listesi" id="kanalListesi"></div>
@@ -64,7 +67,49 @@
       </div>
     </div>
   </div>
-
+  <!-- AYARLAR PENCERESİ -->
+  <div id="ayarlarModal" class="modal gizli">
+    <div class="modal-kutu ayarlar-kutu">
+      <div class="ayarlar-sekmeler">
+        <button class="sekme-btn aktif" data-sekme="donanim">Donanım</button>
+        <button class="sekme-btn" data-sekme="gorunum">Görünüm</button>
+        <button class="sekme-btn" data-sekme="kisayollar">Kısayollar</button>
+      </div>
+    
+      <div class="sekme-icerik" data-icerik="donanim">
+        <label>Mikrofon</label>
+        <select id="ayarMikrofonSecim"></select>
+      
+        <label>Hoparlör</label>
+        <select id="ayarHoparlorSecim"></select>
+      
+        <label>Ana ses seviyesi</label>
+        <input id="ayarAnaSesSeviyesi" type="range" min="0" max="100" value="100" />
+      </div>
+    
+      <div class="sekme-icerik gizli" data-icerik="gorunum">
+        <label>Tema</label>
+        <div class="tema-secenekleri">
+          <button class="tema-secenek" data-tema="koyu">🌑 Koyu</button>
+          <button class="tema-secenek" data-tema="acik">☀️ Açık</button>
+          <button class="tema-secenek" data-tema="gece-mavisi">🌌 Gece Mavisi</button>
+          <button class="tema-secenek" data-tema="mor">🟣 Mor</button>
+        </div>
+      </div>
+    
+      <div class="sekme-icerik gizli" data-icerik="kisayollar">
+        <label>Mikrofon Aç/Kapat</label>
+        <button id="kisayolMikrofonBtn" class="kisayol-btn">Atanmadı</button>
+      
+        <label>Yayını Durdur</label>
+        <button id="kisayolYayinBtn" class="kisayol-btn">Atanmadı</button>
+      
+        <p class="ayarlar-not">Bu kısayollar uygulama arka plandayken (başka pencerede) de çalışır.</p>
+      </div>
+    
+      <button id="btnAyarlarKapat" class="buton-ikincil ayarlar-kapat-btn">Kapat</button>
+    </div>
+  </div>
   <!-- EKRAN KAYNAĞI SEÇİM PENCERESİ -->
   <div id="kaynakSecimModal" class="modal gizli">
     <div class="modal-kutu">

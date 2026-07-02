@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, shell, globalShortcut } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -14,6 +14,52 @@ const GOOGLE_CLIENT_SECRET = '';
 
 let mainWindow;
 const oturumDosyasi = path.join(app.getPath('userData'), 'oturum.json');
+
+const ayarlarDosyasi = path.join(app.getPath('userData'), 'ayarlar.json');
+const varsayilanAyarlar = {
+  tema: 'koyu',
+  mikrofonId: '',
+  hoparlorId: '',
+  anaSesSeviyesi: 100,
+  kisayollar: {
+    mikrofonAcKapat: 'CommandOrControl+Shift+M',
+    yayinDurdur: 'CommandOrControl+Shift+S'
+  }
+};
+
+function ayarlariOku() {
+  try {
+    return { ...varsayilanAyarlar, ...JSON.parse(fs.readFileSync(ayarlarDosyasi, 'utf-8')) };
+  } catch {
+    return varsayilanAyarlar;
+  }
+}
+
+function kisayollariKaydet(kisayollar) {
+  globalShortcut.unregisterAll();
+  if (kisayollar?.mikrofonAcKapat) {
+    try {
+      globalShortcut.register(kisayollar.mikrofonAcKapat, () => {
+        mainWindow?.webContents.send('kisayol-tetiklendi', 'mikrofon');
+      });
+    } catch (e) { console.warn('Kısayol kaydedilemedi:', kisayollar.mikrofonAcKapat, e); }
+  }
+  if (kisayollar?.yayinDurdur) {
+    try {
+      globalShortcut.register(kisayollar.yayinDurdur, () => {
+        mainWindow?.webContents.send('kisayol-tetiklendi', 'yayinDurdur');
+      });
+    } catch (e) { console.warn('Kısayol kaydedilemedi:', kisayollar.yayinDurdur, e); }
+  }
+}
+
+ipcMain.handle('get-settings', () => ayarlariOku());
+
+ipcMain.handle('save-settings', (_event, ayarlar) => {
+  fs.writeFileSync(ayarlarDosyasi, JSON.stringify(ayarlar), 'utf-8');
+  kisayollariKaydet(ayarlar.kisayollar);
+  return true;
+});
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -141,8 +187,12 @@ ipcMain.handle('google-login', async () => {
 
 app.whenReady().then(() => {
   createWindow();
-
   autoUpdater.checkForUpdatesAndNotify();
+  kisayollariKaydet(ayarlariOku().kisayollar);
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {

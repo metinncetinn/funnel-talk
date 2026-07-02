@@ -3,7 +3,10 @@ const animasyon = lottie.loadAnimation({
   renderer: 'svg',
   loop: false,
   autoplay: true,
-  path: 'loading-animation.json'
+  path: 'loading-animation.json',
+  rendererSettings: {
+    preserveAspectRatio: 'xMidYMid slice'
+  }
 });
 
 animasyon.addEventListener('complete', () => {
@@ -45,6 +48,7 @@ const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
 
 // ---- Durum ----
 let mevcutKullanici = null; // { name, email? }
+let ayarlar = null;
 let room = null;
 let aktifKanal = null; // config.js'teki kanal objesi
 let mikrofonAcik = true;
@@ -56,6 +60,9 @@ const oncekiSesSeviyeleri = new Map();
 init();
 
 async function init() {
+  ayarlar = await window.electronAPI.getSettings();
+  document.body.dataset.theme = ayarlar.tema;
+
   const googleVarMi = await window.electronAPI.isGoogleLoginAvailable();
   if (googleVarMi) elGoogleGirisAlani.classList.remove('gizli');
 
@@ -64,6 +71,15 @@ async function init() {
     mevcutKullanici = kayitliKullanici;
     uygulamayaGec();
   }
+
+  window.electronAPI.onKisayolTetiklendi((eylem) => {
+    if (eylem === 'mikrofon') mikrofonuAcKapa();
+    if (eylem === 'yayinDurdur') ekranPaylasimiDurdur();
+  });
+}
+
+async function ayarlariKaydet() {
+  await window.electronAPI.saveSettings(ayarlar);
 }
 
 // ---- Giriş ekranı ----
@@ -212,6 +228,7 @@ async function kanalaGec(kanal) {
     if (kanal.type === 'voice') {
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
+        if (ayarlar.mikrofonId) await room.switchActiveDevice('audioinput', ayarlar.mikrofonId);
       } catch (e) {
         console.warn('Mikrofon bulunamadı, sessiz katılıyorum.', e);
       }
@@ -256,6 +273,10 @@ function baglaOlayDinleyicileri() {
     if (track.kind === Track.Kind.Audio) {
       const el = track.attach();
       el.style.display = 'none';
+      el.volume = (ayarlar.anaSesSeviyesi ?? 100) / 100;
+      if (ayarlar.hoparlorId && el.setSinkId) {
+        el.setSinkId(ayarlar.hoparlorId).catch(() => {});
+      }
       document.body.appendChild(el);
       sesElementleri.set(participant.sid, el);
     } else if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
@@ -361,20 +382,19 @@ function katilimcilariYenidenCiz() {
 }
 
 // ---- Mikrofon / Ekran paylaşımı ----
-elBtnMikrofon.addEventListener('click', () => {
-  if (!room) return;
+elBtnMikrofon.addEventListener('click', mikrofonuAcKapa);
+
+function mikrofonuAcKapa() {
+  if (!room || aktifKanal?.type !== 'voice') return;
   mikrofonAcik = !mikrofonAcik;
   room.localParticipant.setMicrophoneEnabled(mikrofonAcik);
   elBtnMikrofon.textContent = mikrofonAcik ? '🎙️' : '🔇';
   elBtnMikrofon.classList.toggle('aktif-kapali', !mikrofonAcik);
-});
+}
 
 elBtnEkranPaylas.addEventListener('click', async () => {
   if (ekranPaylasimTrack) {
-    await room.localParticipant.unpublishTrack(ekranPaylasimTrack);
-    ekranPaylasimTrack.stop();
-    ekranPaylasimTrack = null;
-    elBtnEkranPaylas.classList.remove('aktif-kapali');
+    await ekranPaylasimiDurdur();
     return;
   }
 
@@ -389,6 +409,14 @@ elBtnEkranPaylas.addEventListener('click', async () => {
   });
   elModal.classList.remove('gizli');
 });
+
+async function ekranPaylasimiDurdur() {
+  if (!ekranPaylasimTrack || !room) return;
+  await room.localParticipant.unpublishTrack(ekranPaylasimTrack);
+  ekranPaylasimTrack.stop();
+  ekranPaylasimTrack = null;
+  elBtnEkranPaylas.classList.remove('aktif-kapali');
+}
 elBtnKaynakIptal.addEventListener('click', () => elModal.classList.add('gizli'));
 
 async function kaynakSecildi(kaynakId) {
@@ -444,3 +472,117 @@ function sohbetMesajiEkle(yazar, metin, benMi) {
   elSohbetMesajlari.appendChild(div);
   elSohbetMesajlari.scrollTop = elSohbetMesajlari.scrollHeight;
 }
+
+// ---- Ayarlar penceresi ----
+const elBtnAyarlar = document.getElementById('btnAyarlar');
+const elAyarlarModal = document.getElementById('ayarlarModal');
+const elBtnAyarlarKapat = document.getElementById('btnAyarlarKapat');
+const elAyarMikrofonSecim = document.getElementById('ayarMikrofonSecim');
+const elAyarHoparlorSecim = document.getElementById('ayarHoparlorSecim');
+const elAyarAnaSesSeviyesi = document.getElementById('ayarAnaSesSeviyesi');
+const elKisayolMikrofonBtn = document.getElementById('kisayolMikrofonBtn');
+const elKisayolYayinBtn = document.getElementById('kisayolYayinBtn');
+
+elBtnAyarlar.addEventListener('click', async () => {
+  await cihazlariListele();
+  kisayolMetniGoster();
+  elAyarlarModal.classList.remove('gizli');
+});
+elBtnAyarlarKapat.addEventListener('click', () => elAyarlarModal.classList.add('gizli'));
+
+document.querySelectorAll('.sekme-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.sekme-btn').forEach((b) => b.classList.remove('aktif'));
+    document.querySelectorAll('.sekme-icerik').forEach((s) => s.classList.add('gizli'));
+    btn.classList.add('aktif');
+    document.querySelector(`.sekme-icerik[data-icerik="${btn.dataset.sekme}"]`).classList.remove('gizli');
+  });
+});
+
+async function cihazlariListele() {
+  try {
+    const gecici = await navigator.mediaDevices.getUserMedia({ audio: true }).catch(() => null);
+    const cihazlar = await navigator.mediaDevices.enumerateDevices();
+    gecici?.getTracks().forEach((t) => t.stop());
+
+    elAyarMikrofonSecim.innerHTML = '';
+    elAyarHoparlorSecim.innerHTML = '';
+
+    cihazlar.filter((c) => c.kind === 'audioinput').forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.textContent = c.label || 'Mikrofon';
+      if (c.deviceId === ayarlar.mikrofonId) opt.selected = true;
+      elAyarMikrofonSecim.appendChild(opt);
+    });
+
+    cihazlar.filter((c) => c.kind === 'audiooutput').forEach((c) => {
+      const opt = document.createElement('option');
+      opt.value = c.deviceId;
+      opt.textContent = c.label || 'Hoparlör';
+      if (c.deviceId === ayarlar.hoparlorId) opt.selected = true;
+      elAyarHoparlorSecim.appendChild(opt);
+    });
+
+    elAyarAnaSesSeviyesi.value = ayarlar.anaSesSeviyesi ?? 100;
+  } catch (e) {
+    console.warn('Cihazlar listelenemedi', e);
+  }
+}
+
+elAyarMikrofonSecim.addEventListener('change', async () => {
+  ayarlar.mikrofonId = elAyarMikrofonSecim.value;
+  await ayarlariKaydet();
+  if (room) room.switchActiveDevice('audioinput', ayarlar.mikrofonId);
+});
+
+elAyarHoparlorSecim.addEventListener('change', async () => {
+  ayarlar.hoparlorId = elAyarHoparlorSecim.value;
+  await ayarlariKaydet();
+  if (room) room.switchActiveDevice('audiooutput', ayarlar.hoparlorId);
+});
+
+elAyarAnaSesSeviyesi.addEventListener('input', async () => {
+  ayarlar.anaSesSeviyesi = Number(elAyarAnaSesSeviyesi.value);
+  sesElementleri.forEach((el) => { el.volume = ayarlar.anaSesSeviyesi / 100; });
+  await ayarlariKaydet();
+});
+
+document.querySelectorAll('.tema-secenek').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    ayarlar.tema = btn.dataset.tema;
+    document.body.dataset.theme = ayarlar.tema;
+    await ayarlariKaydet();
+  });
+});
+
+function kisayolMetniGoster() {
+  elKisayolMikrofonBtn.textContent = ayarlar.kisayollar?.mikrofonAcKapat || 'Atanmadı';
+  elKisayolYayinBtn.textContent = ayarlar.kisayollar?.yayinDurdur || 'Atanmadı';
+}
+
+function kisayolKaydet(buton, anahtar) {
+  buton.textContent = 'Tuşlara bas...';
+  buton.classList.add('kaydediliyor');
+
+  const dinleyici = async (e) => {
+    e.preventDefault();
+    if (['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) return;
+
+    const parcalar = [];
+    if (e.ctrlKey || e.metaKey) parcalar.push('CommandOrControl');
+    if (e.shiftKey) parcalar.push('Shift');
+    if (e.altKey) parcalar.push('Alt');
+    parcalar.push(e.key.length === 1 ? e.key.toUpperCase() : e.key);
+
+    ayarlar.kisayollar[anahtar] = parcalar.join('+');
+    await ayarlariKaydet();
+    kisayolMetniGoster();
+    buton.classList.remove('kaydediliyor');
+    window.removeEventListener('keydown', dinleyici, true);
+  };
+  window.addEventListener('keydown', dinleyici, true);
+}
+
+elKisayolMikrofonBtn.addEventListener('click', () => kisayolKaydet(elKisayolMikrofonBtn, 'mikrofonAcKapat'));
+elKisayolYayinBtn.addEventListener('click', () => kisayolKaydet(elKisayolYayinBtn, 'yayinDurdur'));
