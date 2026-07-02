@@ -116,8 +116,12 @@ function uygulamayaGec() {
 }
 
 // ---- Kanal listesi (sol menü) ----
+let kanalKatilimciElementleri = []; // { kanal, element } listesi, periyodik yenileme icin
+
 function kanalListesiniCiz() {
   elKanalListesi.innerHTML = '';
+  kanalKatilimciElementleri = [];
+
   window.APP_CONFIG.CHANNELS.forEach((kanal) => {
     const disKapsayici = document.createElement('div');
 
@@ -126,42 +130,47 @@ function kanalListesiniCiz() {
     const simge = kanal.type === 'text' ? '💬' : '🔊';
     oge.innerHTML = `<span class="kanal-simge">${simge}</span><span>${kanal.name}</span>`;
 
-    const katilimciListesi = document.createElement('div');
-    katilimciListesi.className = 'kanal-katilimcilari';
-
-    // Tek tık: katılmadan sadece kimlerin içeride olduğunu göster/gizle
-    oge.addEventListener('click', async () => {
-      const acikMi = katilimciListesi.classList.contains('acik');
-      // Diğer kanalların açık önizlemelerini kapat
-      document.querySelectorAll('.kanal-katilimcilari.acik').forEach((el) => el.classList.remove('acik'));
-
-      if (acikMi) return; // zaten açıktı, sadece kapatmış olduk
-
-      katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Yükleniyor...</span>';
-      katilimciListesi.classList.add('acik');
-      try {
-        const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
-        const isimler = await resp.json();
-        if (isimler.length === 0) {
-          katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Kimse yok</span>';
-        } else {
-          katilimciListesi.innerHTML = isimler
-            .map((ad) => `<div class="kanal-katilimci-satiri">🟢 ${ad}</div>`)
-            .join('');
-        }
-      } catch (e) {
-        katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Alınamadı</span>';
-      }
-    });
-
-    // Çift tık: kanala gerçekten katıl
+    // Çift tık: kanala katıl
     oge.addEventListener('dblclick', () => kanalaGec(kanal));
+
+    const katilimciListesi = document.createElement('div');
+    katilimciListesi.className = 'kanal-katilimcilari acik'; // her zaman açık
+    katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Yükleniyor...</span>';
 
     disKapsayici.appendChild(oge);
     disKapsayici.appendChild(katilimciListesi);
     elKanalListesi.appendChild(disKapsayici);
+
+    kanalKatilimciElementleri.push({ kanal, element: katilimciListesi });
   });
+
+  tumKanalKatilimcilariniGuncelle();
 }
+
+async function tumKanalKatilimcilariniGuncelle() {
+  for (const { kanal, element } of kanalKatilimciElementleri) {
+    try {
+      const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
+      const isimler = await resp.json();
+      if (isimler.length === 0) {
+        element.innerHTML = '<span class="kanal-katilimci-yok">Kimse yok</span>';
+      } else {
+        element.innerHTML = isimler
+          .map((ad) => `<div class="kanal-katilimci-satiri">🟢 ${ad}</div>`)
+          .join('');
+      }
+    } catch (e) {
+      element.innerHTML = '<span class="kanal-katilimci-yok">Alınamadı</span>';
+    }
+  }
+}
+
+// Sidebar acikken kanal listelerini 5 saniyede bir tazele
+setInterval(() => {
+  if (!elAppEkran.classList.contains('gizli') && kanalKatilimciElementleri.length > 0) {
+    tumKanalKatilimcilariniGuncelle();
+  }
+}, 5000);
 
 async function kanalaGec(kanal) {
   if (aktifKanal?.name === kanal.name) return;
@@ -221,8 +230,6 @@ async function kanalaGec(kanal) {
     kanalListesiniCiz();
     katilimcilariYenidenCiz();
 
-    // Metin kanalindaysak sohbet paneli otomatik acik gelsin
-    if (kanal.type === 'text') elSohbetPaneli.classList.remove('gizli');
   } catch (err) {
     console.error(err);
     elAktifKanalAdi.textContent = 'Bağlanılamadı';
