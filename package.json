@@ -1,6 +1,6 @@
 {
   "name": "sesli-oda",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Arkadas grubu icin sesli/goruntulu sohbet ve ekran paylasimi uygulamasi.",
   "main": "main.js",
   "scripts": {

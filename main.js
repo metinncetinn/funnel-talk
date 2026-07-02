@@ -114,6 +114,34 @@ ipcMain.handle('clear-user', () => {
   return true;
 });
 
+const cihazKimligiDosyasi = path.join(app.getPath('userData'), 'cihaz-kimligi.json');
+const sesTercihleriDosyasi = path.join(app.getPath('userData'), 'ses-tercihleri.json');
+
+function cihazKimligiAl() {
+  try {
+    const veri = JSON.parse(fs.readFileSync(cihazKimligiDosyasi, 'utf-8'));
+    if (veri.kimlik) return veri.kimlik;
+  } catch {}
+  const yeniKimlik = 'cihaz-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  fs.writeFileSync(cihazKimligiDosyasi, JSON.stringify({ kimlik: yeniKimlik }), 'utf-8');
+  return yeniKimlik;
+}
+
+ipcMain.handle('get-cihaz-kimligi', () => cihazKimligiAl());
+
+ipcMain.handle('get-ses-tercihleri', () => {
+  try {
+    return JSON.parse(fs.readFileSync(sesTercihleriDosyasi, 'utf-8'));
+  } catch {
+    return {};
+  }
+});
+
+ipcMain.handle('save-ses-tercihleri', (_event, tercihler) => {
+  fs.writeFileSync(sesTercihleriDosyasi, JSON.stringify(tercihler), 'utf-8');
+  return true;
+});
+
 ipcMain.handle('is-google-login-available', () => Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET));
 
 // ---- Google ile giris (loopback OAuth akisi) ----

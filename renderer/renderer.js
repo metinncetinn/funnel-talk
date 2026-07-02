@@ -54,12 +54,33 @@ let aktifKanal = null; // config.js'teki kanal objesi
 let mikrofonAcik = true;
 let ekranPaylasimTrack = null;
 let izlenenYayinKimlik = null;
+let cihazKimligim = null;
+let sesTercihleri = {}; // { cihazKimligi: seviye }
 const sesElementleri = new Map();
-const oncekiSesSeviyeleri = new Map();
+
+function katilimciKimligi(katilimci) {
+  return katilimci.metadata || katilimci.identity;
+}
+
+async function sesTercihiKaydet(kimlik, seviye) {
+  sesTercihleri[kimlik] = seviye;
+  await window.electronAPI.saveSesTercihleri(sesTercihleri);
+}
+
+function sesTercihiUygula(katilimci) {
+  const kimlik = katilimciKimligi(katilimci);
+  const kayitliSeviye = sesTercihleri[kimlik];
+  if (kayitliSeviye !== undefined) {
+    katilimci.setVolume(kayitliSeviye);
+  }
+}
 
 init();
 
 async function init() {
+  cihazKimligim = await window.electronAPI.getCihazKimligi();
+  sesTercihleri = await window.electronAPI.getSesTercihleri();
+
   ayarlar = await window.electronAPI.getSettings();
   document.body.dataset.theme = ayarlar.tema;
 
@@ -197,7 +218,6 @@ async function kanalaGec(kanal) {
   }
   sesElementleri.forEach((el) => el.remove());
   sesElementleri.clear();
-  oncekiSesSeviyeleri.clear();
   elYayinAlani.classList.add('gizli');
   elSohbetMesajlari.innerHTML = '';
   ekranPaylasimTrack = null;
@@ -208,7 +228,7 @@ async function kanalaGec(kanal) {
     const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ room: kanal.name, name: mevcutKullanici.name })
+      body: JSON.stringify({ room: kanal.name, name: mevcutKullanici.name, metadata: cihazKimligim })
     });
 
     if (resp.status === 409) {
@@ -255,7 +275,10 @@ async function kanalaGec(kanal) {
 }
 
 function baglaOlayDinleyicileri() {
-  room.on(RoomEvent.ParticipantConnected, katilimcilariYenidenCiz);
+  room.on(RoomEvent.ParticipantConnected, (participant) => {
+    sesTercihiUygula(participant);
+    katilimcilariYenidenCiz();
+  });
   room.on(RoomEvent.ParticipantDisconnected, (p) => {
     sesElementleri.get(p.sid)?.remove();
     sesElementleri.delete(p.sid);
@@ -279,6 +302,7 @@ function baglaOlayDinleyicileri() {
       }
       document.body.appendChild(el);
       sesElementleri.set(participant.sid, el);
+      sesTercihiUygula(participant);
     } else if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
       track.attach(elYayinVideo);
       elYayinAlani.classList.remove('gizli');
@@ -336,17 +360,19 @@ function katilimcilariYenidenCiz() {
     satir.appendChild(adSatiri);
 
     if (!benMi) {
+      const kimlik = katilimciKimligi(katilimci);
+      const kayitliSeviye = sesTercihleri[kimlik] ?? 1;
+
       const kontrolSatiri = document.createElement('div');
       kontrolSatiri.className = 'kisi-kontrol';
 
       const susturBtn = document.createElement('button');
       susturBtn.className = 'buton-ikincil';
-      const susturulduMu = oncekiSesSeviyeleri.get(katilimci.sid) === 0;
-      susturBtn.textContent = susturulduMu ? '🔇' : '🔊';
-      susturBtn.addEventListener('click', () => {
-        const yeniDeger = susturulduMu ? 1 : 0;
+      susturBtn.textContent = kayitliSeviye === 0 ? '🔇' : '🔊';
+      susturBtn.addEventListener('click', async () => {
+        const yeniDeger = kayitliSeviye === 0 ? 1 : 0;
         katilimci.setVolume(yeniDeger);
-        oncekiSesSeviyeleri.set(katilimci.sid, yeniDeger);
+        await sesTercihiKaydet(kimlik, yeniDeger);
         katilimcilariYenidenCiz();
       });
       kontrolSatiri.appendChild(susturBtn);
@@ -355,11 +381,11 @@ function katilimcilariYenidenCiz() {
       sesKaydirici.type = 'range';
       sesKaydirici.min = '0';
       sesKaydirici.max = '150';
-      sesKaydirici.value = String((oncekiSesSeviyeleri.get(katilimci.sid) ?? 1) * 100);
-      sesKaydirici.addEventListener('input', (e) => {
+      sesKaydirici.value = String(kayitliSeviye * 100);
+      sesKaydirici.addEventListener('input', async (e) => {
         const oran = Number(e.target.value) / 100;
         katilimci.setVolume(oran);
-        oncekiSesSeviyeleri.set(katilimci.sid, oran);
+        await sesTercihiKaydet(kimlik, oran);
       });
       kontrolSatiri.appendChild(sesKaydirici);
       satir.appendChild(kontrolSatiri);
