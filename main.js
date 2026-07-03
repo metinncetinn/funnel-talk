@@ -238,8 +238,13 @@ app.whenReady().then(() => {
   trayOlustur();
   autoUpdater.checkForUpdatesAndNotify();
   kisayollariKaydet(ayarlariOku().kisayollar);
-});
 
+  // Uygulama artik kapaninca arka plana gizlendigi icin (tray),
+  // sadece ilk acilista degil, belirli araliklarla da kontrol edelim.
+  setInterval(() => {
+    autoUpdater.checkForUpdatesAndNotify();
+  }, 2 * 60 * 60 * 1000); // 2 saatte bir
+});
 app.on('before-quit', () => {
   isQuitting = true;
 });
