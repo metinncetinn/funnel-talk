@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, shell, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, shell, globalShortcut, Tray, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
@@ -13,6 +13,9 @@ const GOOGLE_CLIENT_ID = '';
 const GOOGLE_CLIENT_SECRET = '';
 
 let mainWindow;
+let tray = null;
+let isQuitting = false;
+
 const oturumDosyasi = path.join(app.getPath('userData'), 'oturum.json');
 
 const ayarlarDosyasi = path.join(app.getPath('userData'), 'ayarlar.json');
@@ -77,8 +80,25 @@ function createWindow() {
     }
   });
 
+  function trayOlustur() {
+    tray = new Tray(path.join(__dirname, 'icon.ico'));
+    const menu = Menu.buildFromTemplate([
+      { label: 'Göster', click: () => mainWindow.show() },
+      { label: 'Çıkış', click: () => { isQuitting = true; app.quit(); } }
+    ]);
+    tray.setToolTip('Sesli Oda');
+    tray.setContextMenu(menu);
+    tray.on('click', () => mainWindow.show());
+  }
+
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.on('close', (e) => {
+  if (!isQuitting) {
+    e.preventDefault();
+    mainWindow.hide();
+  }
+});
 }
 
 // Ekran paylasimi icin secilebilir pencere/ekran listesini renderer'a veriyoruz.
@@ -215,8 +235,13 @@ ipcMain.handle('google-login', async () => {
 
 app.whenReady().then(() => {
   createWindow();
+  trayOlustur();
   autoUpdater.checkForUpdatesAndNotify();
   kisayollariKaydet(ayarlariOku().kisayollar);
+});
+
+app.on('before-quit', () => {
+  isQuitting = true;
 });
 
 app.on('will-quit', () => {

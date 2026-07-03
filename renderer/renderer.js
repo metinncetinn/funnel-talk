@@ -167,8 +167,8 @@ function kanalListesiniCiz() {
     const simge = kanal.type === 'text' ? '💬' : '🔊';
     oge.innerHTML = `<span class="kanal-simge">${simge}</span><span>${kanal.name}</span>`;
 
-    // Çift tık: kanala katıl
-    oge.addEventListener('dblclick', () => kanalaGec(kanal));
+    // Tık: kanala katıl
+    oge.addEventListener('click', () => kanalaGec(kanal));
 
     const katilimciListesi = document.createElement('div');
     katilimciListesi.className = 'kanal-katilimcilari acik'; // her zaman açık
@@ -244,6 +244,9 @@ async function kanalaGec(kanal) {
     baglaOlayDinleyicileri();
 
     await room.connect(url, token, { autoSubscribe: false });
+    room.remoteParticipants.forEach((katilimci) => {
+      katilimci.audioTrackPublications.forEach((pub) => pub.setSubscribed(true));
+    });
 
     if (kanal.type === 'voice') {
       try {
@@ -261,7 +264,7 @@ async function kanalaGec(kanal) {
       elBtnMikrofon.classList.add('gizli');
       elBtnEkranPaylas.classList.add('gizli');
     }
-
+    elBtnKanaldanAyril.classList.remove('gizli');
     aktifKanal = kanal;
     elAktifKanalAdi.textContent = (kanal.type === 'text' ? '💬 ' : '# ') + kanal.name;
     kanalListesiniCiz();
@@ -335,6 +338,9 @@ function baglaOlayDinleyicileri() {
   room.on(RoomEvent.Disconnected, () => {
     aktifKanal = null;
     elAktifKanalAdi.textContent = 'Bir kanal seç';
+    elBtnMikrofon.classList.add('gizli');
+    elBtnEkranPaylas.classList.add('gizli');
+    elBtnKanaldanAyril.classList.add('gizli');
     kanalListesiniCiz();
   });
 }
@@ -475,7 +481,10 @@ async function kaynakSecildi(kaynakId) {
 elBtnSohbetAcKapat.addEventListener('click', () => {
   elSohbetPaneli.classList.toggle('gizli');
 });
-
+const elBtnKanaldanAyril = document.getElementById('btnKanaldanAyril');
+elBtnKanaldanAyril.addEventListener('click', () => {
+  if (room) room.disconnect();
+});
 function sohbetGonder() {
   const metin = elSohbetInput.value.trim();
   if (!metin || !room) return;
@@ -612,3 +621,13 @@ function kisayolKaydet(buton, anahtar) {
 
 elKisayolMikrofonBtn.addEventListener('click', () => kisayolKaydet(elKisayolMikrofonBtn, 'mikrofonAcKapat'));
 elKisayolYayinBtn.addEventListener('click', () => kisayolKaydet(elKisayolYayinBtn, 'yayinDurdur'));
+
+const elBtnTamEkran = document.getElementById('btnTamEkran');
+elBtnTamEkran.addEventListener('click', () => {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    elYayinVideo.requestFullscreen();
+  }
+});
+elYayinVideo.addEventListener('dblclick', () => elBtnTamEkran.click());
