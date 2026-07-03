@@ -80,25 +80,25 @@ function createWindow() {
     }
   });
 
-  function trayOlustur() {
-    tray = new Tray(path.join(__dirname, 'icon.ico'));
-    const menu = Menu.buildFromTemplate([
-      { label: 'Göster', click: () => mainWindow.show() },
-      { label: 'Çıkış', click: () => { isQuitting = true; app.quit(); } }
-    ]);
-    tray.setToolTip('Sesli Oda');
-    tray.setContextMenu(menu);
-    tray.on('click', () => mainWindow.show());
-  }
-
   mainWindow.setMenuBarVisibility(false);
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   mainWindow.on('close', (e) => {
-  if (!isQuitting) {
-    e.preventDefault();
-    mainWindow.hide();
-  }
-});
+    if (!isQuitting) {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+}
+
+function trayOlustur() {
+  tray = new Tray(path.join(__dirname, 'icon.ico'));
+  const menu = Menu.buildFromTemplate([
+    { label: 'Göster', click: () => mainWindow.show() },
+    { label: 'Çıkış', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+  tray.setToolTip('Sesli Oda');
+  tray.setContextMenu(menu);
+  tray.on('click', () => mainWindow.show());
 }
 
 // Ekran paylasimi icin secilebilir pencere/ekran listesini renderer'a veriyoruz.
