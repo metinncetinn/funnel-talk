@@ -475,6 +475,7 @@ elBtnEkranPaylas.addEventListener('click', async () => {
     elKaynakListesi.appendChild(oge);
   });
   elModal.classList.remove('gizli');
+  const elKaliteSecim = document.getElementById('kaliteSecim');
 });
 
 async function ekranPaylasimiDurdur() {
@@ -489,13 +490,31 @@ elBtnKaynakIptal.addEventListener('click', () => elModal.classList.add('gizli'))
 async function kaynakSecildi(kaynakId) {
   elModal.classList.add('gizli');
   try {
+    // Seçilen kaliteye göre çözünürlüğü belirle
+    const kaliteMap = {
+      '4k': { width: 3840, height: 2160 },
+      '2k': { width: 2560, height: 1440 },
+      '1080p': { width: 1920, height: 1080 },
+      '720p': { width: 1280, height: 720 },
+      '480p': { width: 854, height: 480 }
+    };
+    const elKaliteSecim = document.getElementById('kaliteSecim');
+    const seciliKalite = elKaliteSecim.value;
+    const { width, height } = kaliteMap[seciliKalite] || kaliteMap['1080p'];
+
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
         mandatory: {
           chromeMediaSource: 'desktop',
           chromeMediaSourceId: kaynakId
-        }
+        },
+        optional: [
+          { minWidth: width },
+          { maxWidth: width },
+          { minHeight: height },
+          { maxHeight: height }
+        ]
       }
     });
     const mediaTrack = stream.getVideoTracks()[0];

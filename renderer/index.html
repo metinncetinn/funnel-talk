@@ -130,10 +130,20 @@
     </div>
   </div>
   <!-- EKRAN KAYNAĞI SEÇİM PENCERESİ -->
+  <!-- EKRAN KAYNAĞI SEÇİM PENCERESİ -->
   <div id="kaynakSecimModal" class="modal gizli">
     <div class="modal-kutu">
       <h3>Neyi paylaşmak istersin?</h3>
       <div id="kaynakListesi" class="kaynak-listesi"></div>
+
+      <label style="display: block; margin-top: 16px; font-size: 12px; color: var(--metin-soluk);">Kalite</label>
+      <select id="kaliteSecim" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--kenar); background: var(--bg-1); color: var(--metin); margin-bottom: 12px;">
+        <option value="4k">4K (3840x2160)</option>
+        <option value="2k">2K (2560x1440)</option>
+        <option value="1080p" selected>1080p (1920x1080)</option>
+        <option value="720p">720p (1280x720)</option>
+        <option value="480p">480p (854x480)</option>
+      </select>
       <button id="btnKaynakIptal" class="buton-ikincil">Vazgeç</button>
     </div>
   </div>
