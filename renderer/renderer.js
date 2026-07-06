@@ -252,6 +252,14 @@ async function kanalaGec(kanal) {
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
         if (ayarlar.mikrofonId) await room.switchActiveDevice('audioinput', ayarlar.mikrofonId);
+        setTimeout(() => {
+          const audioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;
+          if (audioTrack?.mediaStreamTrack) {
+            audioTrack.mediaStreamTrack.applyConstraints?.({
+              noiseSuppression: ayarlar.gurultuSuppression ?? false
+            }).catch(() => {});
+          }
+        }, 500);
       } catch (e) {
         console.warn('Mikrofon bulunamadı, sessiz katılıyorum.', e);
       }
@@ -279,10 +287,14 @@ async function kanalaGec(kanal) {
 
 function baglaOlayDinleyicileri() {
   room.on(RoomEvent.ParticipantConnected, (participant) => {
+    if (participant !== room.localParticipant) {
+      document.getElementById('sesGeliyor').play().catch(() => {});
+    }
     sesTercihiUygula(participant);
     katilimcilariYenidenCiz();
   });
   room.on(RoomEvent.ParticipantDisconnected, (p) => {
+    document.getElementById('sesCikiyor').play().catch(() => {});
     sesElementleri.get(p.sid)?.remove();
     sesElementleri.delete(p.sid);
     katilimcilariYenidenCiz();
@@ -290,10 +302,18 @@ function baglaOlayDinleyicileri() {
 
   room.on(RoomEvent.TrackPublished, (publication) => {
     if (publication.kind === Track.Kind.Audio) publication.setSubscribed(true);
+    if (publication.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
+      document.getElementById('sesYayinBasladi').play().catch(() => {});
+    }
     katilimcilariYenidenCiz();
   });
 
-  room.on(RoomEvent.TrackUnpublished, () => katilimcilariYenidenCiz());
+  room.on(RoomEvent.TrackUnpublished, (publication) => {
+    if (publication.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
+      document.getElementById('sesYayinBitti').play().catch(() => {});
+    }
+    katilimcilariYenidenCiz();
+  });
 
   room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
     if (track.kind === Track.Kind.Audio) {
@@ -400,10 +420,25 @@ function katilimcilariYenidenCiz() {
         (p) => p.source === Track.Source.ScreenShare
       );
       if (ekranPub) {
+        const izleyiciListesi = [];
+        room.remoteParticipants.forEach((digerKatilimci) => {
+          digerKatilimci.videoTrackSubscriptions.forEach((track, pubId) => {
+            const pub = digerKatilimci.videoTrackPublications.get(pubId);
+            if (pub && pub.source === Track.Source.ScreenShare && 
+                katilimci.videoTrackPublications.has(pubId)) {
+              // Bu katılımcının yayınını diğeri izliyor
+              if (digerKatilimci !== room.localParticipant) {
+                izleyiciListesi.push(digerKatilimci.name || digerKatilimci.identity);
+              }
+            }
+          });
+        });
+      
         const rozet = document.createElement('span');
         const izleniyor = ekranPub.isSubscribed;
+        const izleyiciMetni = izleyiciListesi.length > 0 ? ` (${izleyiciListesi.join(', ')} izliyor)` : '';
         rozet.className = 'yayin-rozeti' + (izleniyor ? '' : ' izlemiyor');
-        rozet.textContent = izleniyor ? '🖥️ Yayın açık · izlemeyi bırak' : '🖥️ Yayın var · izle';
+        rozet.textContent = izleniyor ? `🖥️ Yayın açık${izleyiciMetni}` : '🖥️ Yayın var · izle';
         rozet.addEventListener('click', () => ekranPub.setSubscribed(!izleniyor));
         satir.appendChild(rozet);
       }
@@ -525,6 +560,35 @@ elBtnAyarlar.addEventListener('click', async () => {
 });
 elBtnAyarlarKapat.addEventListener('click', () => elAyarlarModal.classList.add('gizli'));
 
+const elAyarGurultuSuppression = document.getElementById('ayarGurultuSuppression');
+
+function ayarlariGuncelle() {
+  elAyarMikrofonSecim.value = ayarlar.mikrofonId || '';
+  elAyarHoparlorSecim.value = ayarlar.hoparlorId || '';
+  elAyarAnaSesSeviyesi.value = ayarlar.anaSesSeviyesi ?? 100;
+  elAyarGurultuSuppression.checked = ayarlar.gurultuSuppression ?? false;
+}
+
+elAyarGurultuSuppression.addEventListener('change', async () => {
+  ayarlar.gurultuSuppression = elAyarGurultuSuppression.checked;
+  await ayarlariKaydet();
+  
+  if (room) {
+    const audioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;
+    if (audioTrack?.mediaStreamTrack) {
+      const settings = audioTrack.mediaStreamTrack.getSettings?.();
+      if (settings) {
+        settings.noiseSuppression = elAyarGurultuSuppression.checked;
+        await audioTrack.mediaStreamTrack.applyConstraints?.({
+          noiseSuppression: elAyarGurultuSuppression.checked
+        }).catch(() => {
+          // Tarayıcı desteklemiyorsa sessiz başarısız ol
+        });
+      }
+    }
+  }
+});
+
 document.querySelectorAll('.sekme-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.sekme-btn').forEach((b) => b.classList.remove('aktif'));
@@ -563,6 +627,7 @@ async function cihazlariListele() {
   } catch (e) {
     console.warn('Cihazlar listelenemedi', e);
   }
+  ayarlariGuncelle();
 }
 
 elAyarMikrofonSecim.addEventListener('change', async () => {

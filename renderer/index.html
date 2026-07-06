@@ -5,6 +5,18 @@
 <title>Funnel Talk</title>
 <link rel="stylesheet" href="style.css" />
 </head>
+<audio id="sesCikiyor" style="display:none;">
+  <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
+</audio>
+<audio id="sesGeliyor" style="display:none;">
+  <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
+</audio>
+<audio id="sesYayinBasladi" style="display:none;">
+  <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
+</audio>
+<audio id="sesYayinBitti" style="display:none;">
+  <source src="data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" type="audio/wav">
+</audio>
 <body>
   <div id="ekran-splash" class="ekran">
     <div id="splashAnimasyon"></div>
@@ -87,6 +99,11 @@
       
         <label>Ana ses seviyesi</label>
         <input id="ayarAnaSesSeviyesi" type="range" min="0" max="100" value="100" />
+
+        <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
+          <input id="ayarGurultuSuppression" type="checkbox" />
+          Gürültü Engelleme (Noise Cancellation)
+        </label>
       </div>
     
       <div class="sekme-icerik gizli" data-icerik="gorunum">
