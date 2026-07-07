@@ -317,6 +317,7 @@ async function kanalaGec(kanal) {
     elAktifKanalAdi.textContent = (kanal.type === 'text' ? '💬 ' : '# ') + kanal.name;
     kanalListesiniCiz();
     katilimcilariYenidenCiz();
+    document.getElementById('sesGeliyor').play().catch(() => {});
 
   } catch (err) {
     console.error(err);
@@ -398,6 +399,7 @@ function baglaOlayDinleyicileri() {
   });
 
   room.on(RoomEvent.Disconnected, () => {
+    document.getElementById('sesCikiyor').play().catch(() => {});
     mikrofonuDurdurVeTemizle();
     aktifKanal = null;
     elAktifKanalAdi.textContent = 'Bir kanal seç';
@@ -632,6 +634,7 @@ async function ekranPaylasimiDurdur() {
   ekranPaylasimTrack.stop();
   ekranPaylasimTrack = null;
   elBtnEkranPaylas.classList.remove('aktif-kapali');
+  document.getElementById('sesYayinBitti').play().catch(() => {});
 }
 elBtnKaynakIptal.addEventListener('click', () => elModal.classList.add('gizli'));
 
@@ -676,13 +679,14 @@ async function kaynakSecildi(kaynakId) {
     await room.localParticipant.publishTrack(ekranPaylasimTrack, {
       source: Track.Source.ScreenShare,
       name: 'screen',
-      simulcast: false, // Tek kalite katmanı yayınla, otomatik düşürmesin
+      simulcast: false,
       videoEncoding: {
         maxBitrate: bitrate,
         maxFramerate: frameRate
       }
     });
     elBtnEkranPaylas.classList.add('aktif-kapali');
+    document.getElementById('sesYayinBasladi').play().catch(() => {});
   } catch (err) {
     console.error('Ekran paylaşımı başlatılamadı', err);
   }
