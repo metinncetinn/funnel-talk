@@ -90,15 +90,25 @@ function createWindow() {
   });
 }
 
+let sonGuncellemeKontrolu = Date.now();
+
+function guncellemeKontroluGerekirse() {
+  const simdi = Date.now();
+  if (simdi - sonGuncellemeKontrolu > 15 * 60 * 1000) { // en fazla 15 dakikada bir
+    sonGuncellemeKontrolu = simdi;
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+}
+
 function trayOlustur() {
   tray = new Tray(path.join(__dirname, 'icon.ico'));
   const menu = Menu.buildFromTemplate([
-    { label: 'Göster', click: () => mainWindow.show() },
+    { label: 'Göster', click: () => { mainWindow.show(); guncellemeKontroluGerekirse(); } },
     { label: 'Çıkış', click: () => { isQuitting = true; app.quit(); } }
   ]);
   tray.setToolTip('Sesli Oda');
   tray.setContextMenu(menu);
-  tray.on('click', () => mainWindow.show());
+  tray.on('click', () => { mainWindow.show(); guncellemeKontroluGerekirse(); });
 }
 
 // Ekran paylasimi icin secilebilir pencere/ekran listesini renderer'a veriyoruz.

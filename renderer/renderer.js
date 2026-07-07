@@ -48,6 +48,14 @@ const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
 
 // ---- Durum ----
 let mevcutKullanici = null; // { name, email? }
+let mikrofonAudioContext = null;
+let mikrofonKaynakNode = null;
+let mikrofonAnalyserNode = null;
+let mikrofonGainNode = null;
+let mikrofonDestinationNode = null;
+let mikrofonHamStream = null;
+let mikrofonYayinTrack = null;
+let esikOlcumInterval = null;
 let ayarlar = null;
 let room = null;
 let aktifKanal = null; // config.js'teki kanal objesi
@@ -57,6 +65,17 @@ let izlenenYayinKimlik = null;
 let cihazKimligim = null;
 let sesTercihleri = {}; // { cihazKimligi: seviye }
 const sesElementleri = new Map();
+
+
+const appHertzbeatInterval = setInterval(() => {
+  if (mevcutKullanici) {
+    localStorage.setItem(`app-heartbeat-${cihazKimligim}`, JSON.stringify({
+      kullanici: mevcutKullanici.name,
+      timestamp: Date.now(),
+      kanalda: !!room
+    }));
+  }
+}, 5000);
 
 function katilimciKimligi(katilimci) {
   return katilimci.metadata || katilimci.identity;
@@ -83,7 +102,40 @@ async function init() {
 
   ayarlar = await window.electronAPI.getSettings();
   document.body.dataset.theme = ayarlar.tema;
+  setInterval(() => {
+    cevrimiciListesiGuncelle();
+  }, 3000);
 
+  function cevrimiciListesiGuncelle() {
+    const elCevrimici = document.getElementById('cevrimiciListesi');
+    if (!elCevrimici) return;
+
+    const cevrimiciKisiler = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith('app-heartbeat-')) {
+        try {
+          const veri = JSON.parse(localStorage.getItem(key));
+          if (Date.now() - veri.timestamp < 10000) { // 10 saniyeden eski değilse
+            cevrimiciKisiler.push({ ad: veri.kullanici, kanalda: veri.kanalda });
+          }
+        } catch {}
+      }
+    }
+
+    elCevrimici.innerHTML = '';
+    cevrimiciKisiler.forEach((kisi) => {
+      const div = document.createElement('div');
+      div.className = 'cevrimici-ogesi' + (kisi.kanalda ? ' aktif' : '');
+      div.textContent = (kisi.kanalda ? '🟢 ' : '⚪ ') + kisi.ad;
+      elCevrimici.appendChild(div);
+    });
+
+    const panel = document.getElementById('katilimciListesiPanel');
+    if (cevrimiciKisiler.length > 0) {
+      panel.classList.remove('gizli');
+    }
+  }
   const googleVarMi = await window.electronAPI.isGoogleLoginAvailable();
   if (googleVarMi) elGoogleGirisAlani.classList.remove('gizli');
 
@@ -216,6 +268,7 @@ async function kanalaGec(kanal) {
     room.disconnect();
     room = null;
   }
+  mikrofonuDurdurVeTemizle();
   sesElementleri.forEach((el) => el.remove());
   sesElementleri.clear();
   elYayinAlani.classList.add('gizli');
@@ -249,23 +302,10 @@ async function kanalaGec(kanal) {
     });
 
     if (kanal.type === 'voice') {
-      try {
-        await room.localParticipant.setMicrophoneEnabled(true);
-        if (ayarlar.mikrofonId) await room.switchActiveDevice('audioinput', ayarlar.mikrofonId);
-        setTimeout(() => {
-          const audioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;
-          if (audioTrack?.mediaStreamTrack) {
-            audioTrack.mediaStreamTrack.applyConstraints?.({
-              noiseSuppression: ayarlar.gurultuSuppression ?? false
-            }).catch(() => {});
-          }
-        }, 500);
-      } catch (e) {
-        console.warn('Mikrofon bulunamadı, sessiz katılıyorum.', e);
-      }
+      mikrofonAcik = true;
+      await mikrofonuBaslatVeYayinla();
       elBtnMikrofon.classList.remove('gizli');
       elBtnEkranPaylas.classList.remove('gizli');
-      mikrofonAcik = true;
       elBtnMikrofon.textContent = '🎙️';
       elBtnMikrofon.classList.remove('aktif-kapali');
     } else {
@@ -344,6 +384,8 @@ function baglaOlayDinleyicileri() {
   });
 
   room.on(RoomEvent.ActiveSpeakersChanged, katilimcilariYenidenCiz);
+  room.on(RoomEvent.TrackMuted, () => katilimcilariYenidenCiz());
+  room.on(RoomEvent.TrackUnmuted, () => katilimcilariYenidenCiz());
 
   // ---- Sohbet mesajlari LiveKit veri kanali uzerinden ----
   room.on(RoomEvent.DataReceived, (payload) => {
@@ -356,6 +398,7 @@ function baglaOlayDinleyicileri() {
   });
 
   room.on(RoomEvent.Disconnected, () => {
+    mikrofonuDurdurVeTemizle();
     aktifKanal = null;
     elAktifKanalAdi.textContent = 'Bir kanal seç';
     elBtnMikrofon.classList.add('gizli');
@@ -379,8 +422,11 @@ function katilimcilariYenidenCiz() {
 
     const adSatiri = document.createElement('div');
     adSatiri.className = 'kisi-ad';
+    const mikrofonYayini = [...katilimci.audioTrackPublications.values()][0];
+    const susturulmus = mikrofonYayini ? mikrofonYayini.isMuted : (benMi ? !mikrofonAcik : false);
+
     const adSpan = document.createElement('span');
-    adSpan.textContent = (katilimci.name || katilimci.identity) + (benMi ? ' (sen)' : '');
+    adSpan.textContent = (katilimci.name || katilimci.identity) + (benMi ? ' (sen)' : '') + (susturulmus ? ' 🔇' : '');
     if (konusanlar.has(katilimci.sid)) adSpan.classList.add('rozet-konusuyor');
     adSatiri.appendChild(adSpan);
     satir.appendChild(adSatiri);
@@ -452,13 +498,115 @@ function katilimcilariYenidenCiz() {
 elBtnMikrofon.addEventListener('click', mikrofonuAcKapa);
 
 function mikrofonuAcKapa() {
-  if (!room || aktifKanal?.type !== 'voice') return;
+  if (!room || aktifKanal?.type !== 'voice' || !mikrofonYayinTrack) return;
   mikrofonAcik = !mikrofonAcik;
-  room.localParticipant.setMicrophoneEnabled(mikrofonAcik);
+  if (mikrofonAcik) {
+    mikrofonYayinTrack.unmute();
+  } else {
+    mikrofonYayinTrack.mute();
+  }
   elBtnMikrofon.textContent = mikrofonAcik ? '🎙️' : '🔇';
   elBtnMikrofon.classList.toggle('aktif-kapali', !mikrofonAcik);
 }
+async function mikrofonuBaslatVeYayinla() {
+  try {
+    mikrofonHamStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: ayarlar.mikrofonId || undefined,
+        echoCancellation: true,
+        noiseSuppression: ayarlar.gurultuSuppression ?? false,
+        autoGainControl: false
+      }
+    });
 
+    mikrofonAudioContext = new AudioContext();
+    mikrofonKaynakNode = mikrofonAudioContext.createMediaStreamSource(mikrofonHamStream);
+    mikrofonAnalyserNode = mikrofonAudioContext.createAnalyser();
+    mikrofonAnalyserNode.fftSize = 512;
+    mikrofonGainNode = mikrofonAudioContext.createGain();
+    mikrofonGainNode.gain.value = 1;
+    mikrofonDestinationNode = mikrofonAudioContext.createMediaStreamDestination();
+
+    mikrofonKaynakNode.connect(mikrofonAnalyserNode);
+    mikrofonAnalyserNode.connect(mikrofonGainNode);
+    mikrofonGainNode.connect(mikrofonDestinationNode);
+
+    const islenmisTrack = mikrofonDestinationNode.stream.getAudioTracks()[0];
+    mikrofonYayinTrack = new LivekitClient.LocalAudioTrack(islenmisTrack);
+    await room.localParticipant.publishTrack(mikrofonYayinTrack, { source: Track.Source.Microphone });
+
+    if (!mikrofonAcik) mikrofonYayinTrack.mute();
+
+    sesEsigiOlcumuBaslat();
+  } catch (e) {
+    console.warn('Mikrofon başlatılamadı, sessiz katılıyorum.', e);
+  }
+}
+async function mikrofonKaynaginiDegistir() {
+  if (!mikrofonAudioContext || !mikrofonAnalyserNode) return;
+
+  const eskiStream = mikrofonHamStream;
+  try {
+    mikrofonHamStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: ayarlar.mikrofonId || undefined,
+        echoCancellation: true,
+        noiseSuppression: ayarlar.gurultuSuppression ?? false,
+        autoGainControl: false
+      }
+    });
+
+    mikrofonKaynakNode.disconnect();
+    mikrofonKaynakNode = mikrofonAudioContext.createMediaStreamSource(mikrofonHamStream);
+    mikrofonKaynakNode.connect(mikrofonAnalyserNode);
+
+    eskiStream?.getTracks().forEach((t) => t.stop());
+  } catch (e) {
+    console.warn('Mikrofon kaynağı değiştirilemedi', e);
+  }
+}
+
+function sesEsigiOlcumuBaslat() {
+  if (esikOlcumInterval) clearInterval(esikOlcumInterval);
+  const veriDizisi = new Uint8Array(mikrofonAnalyserNode.frequencyBinCount);
+  let mevcutKazanc = 1;
+
+  esikOlcumInterval = setInterval(() => {
+    if (!mikrofonAnalyserNode) return;
+    mikrofonAnalyserNode.getByteTimeDomainData(veriDizisi);
+
+    let toplamKare = 0;
+    for (let i = 0; i < veriDizisi.length; i++) {
+      const ornek = (veriDizisi[i] - 128) / 128;
+      toplamKare += ornek * ornek;
+    }
+    const rms = Math.sqrt(toplamKare / veriDizisi.length);
+    const db = rms > 0 ? 20 * Math.log10(rms) : -100;
+
+    const esik = ayarlar.sesEsigi ?? -30;
+    const hedefKazanc = db > esik ? 1 : 0;
+
+    // Ani kesilme/çatlama olmasın diye yumuşak geçiş
+    mevcutKazanc += (hedefKazanc - mevcutKazanc) * 0.3;
+    mikrofonGainNode.gain.setTargetAtTime(mevcutKazanc, mikrofonAudioContext.currentTime, 0.05);
+  }, 50);
+}
+
+function mikrofonuDurdurVeTemizle() {
+  if (esikOlcumInterval) { clearInterval(esikOlcumInterval); esikOlcumInterval = null; }
+  if (mikrofonYayinTrack && room) {
+    room.localParticipant.unpublishTrack(mikrofonYayinTrack).catch(() => {});
+    mikrofonYayinTrack.stop();
+    mikrofonYayinTrack = null;
+  }
+  mikrofonHamStream?.getTracks().forEach((t) => t.stop());
+  mikrofonHamStream = null;
+  if (mikrofonAudioContext) { mikrofonAudioContext.close().catch(() => {}); mikrofonAudioContext = null; }
+  mikrofonKaynakNode = null;
+  mikrofonAnalyserNode = null;
+  mikrofonGainNode = null;
+  mikrofonDestinationNode = null;
+}
 elBtnEkranPaylas.addEventListener('click', async () => {
   if (ekranPaylasimTrack) {
     await ekranPaylasimiDurdur();
@@ -490,40 +638,49 @@ elBtnKaynakIptal.addEventListener('click', () => elModal.classList.add('gizli'))
 async function kaynakSecildi(kaynakId) {
   elModal.classList.add('gizli');
   try {
-    // Seçilen kaliteye göre çözünürlüğü belirle
+    // Seçilen kaliteye göre çözünürlük + fps + hedef bitrate
     const kaliteMap = {
-      '4k': { width: 3840, height: 2160 },
-      '2k': { width: 2560, height: 1440 },
-      '1080p': { width: 1920, height: 1080 },
-      '720p': { width: 1280, height: 720 },
-      '480p': { width: 854, height: 480 }
+      '4k':   { width: 3840, height: 2160, frameRate: 30, bitrate: 8_000_000 },
+      '2k':   { width: 2560, height: 1440, frameRate: 30, bitrate: 5_000_000 },
+      '1080p':{ width: 1920, height: 1080, frameRate: 30, bitrate: 3_000_000 },
+      '720p': { width: 1280, height: 720,  frameRate: 24, bitrate: 1_500_000 },
+      '480p': { width: 854,  height: 480,  frameRate: 15, bitrate: 800_000 }
     };
     const elKaliteSecim = document.getElementById('kaliteSecim');
     const seciliKalite = elKaliteSecim.value;
-    const { width, height } = kaliteMap[seciliKalite] || kaliteMap['1080p'];
+    const { width, height, frameRate, bitrate } = kaliteMap[seciliKalite] || kaliteMap['1080p'];
 
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: false,
       video: {
         mandatory: {
           chromeMediaSource: 'desktop',
-          chromeMediaSourceId: kaynakId
-        },
-        optional: [
-          { minWidth: width },
-          { maxWidth: width },
-          { minHeight: height },
-          { maxHeight: height }
-        ]
+          chromeMediaSourceId: kaynakId,
+          minWidth: width,
+          maxWidth: width,
+          minHeight: height,
+          maxHeight: height,
+          minFrameRate: frameRate,
+          maxFrameRate: frameRate
+        }
       }
     });
     const mediaTrack = stream.getVideoTracks()[0];
     mediaTrack.onended = () => elBtnEkranPaylas.click();
 
+    // Gerçek yakalanan çözünürlüğü kontrol et (monitör sınırı yüzünden istenenden düşük olabilir)
+    const gercekAyar = mediaTrack.getSettings();
+    console.log('İstenen:', width + 'x' + height, '| Gerçek:', gercekAyar.width + 'x' + gercekAyar.height, '| FPS:', gercekAyar.frameRate);
+
     ekranPaylasimTrack = new LivekitClient.LocalVideoTrack(mediaTrack);
     await room.localParticipant.publishTrack(ekranPaylasimTrack, {
       source: Track.Source.ScreenShare,
-      name: 'screen'
+      name: 'screen',
+      simulcast: false, // Tek kalite katmanı yayınla, otomatik düşürmesin
+      videoEncoding: {
+        maxBitrate: bitrate,
+        maxFramerate: frameRate
+      }
     });
     elBtnEkranPaylas.classList.add('aktif-kapali');
   } catch (err) {
@@ -580,31 +737,28 @@ elBtnAyarlar.addEventListener('click', async () => {
 elBtnAyarlarKapat.addEventListener('click', () => elAyarlarModal.classList.add('gizli'));
 
 const elAyarGurultuSuppression = document.getElementById('ayarGurultuSuppression');
+const elAyarSesEsigi = document.getElementById('ayarSesEsigi');
+const elSesEsigiMetin = document.getElementById('sesEsigiMetin');
+
+elAyarSesEsigi.addEventListener('input', async () => {
+  ayarlar.sesEsigi = Number(elAyarSesEsigi.value);
+  elSesEsigiMetin.textContent = `${ayarlar.sesEsigi} dB`;
+  await ayarlariKaydet();
+});
 
 function ayarlariGuncelle() {
   elAyarMikrofonSecim.value = ayarlar.mikrofonId || '';
   elAyarHoparlorSecim.value = ayarlar.hoparlorId || '';
-  elAyarAnaSesSeviyesi.value = ayarlar.anaSesSeviyesi ?? 100;
+  elAyarAnaSesSeviyesi.value = Math.min(100, ayarlar.anaSesSeviyesi ?? 100);
   elAyarGurultuSuppression.checked = ayarlar.gurultuSuppression ?? false;
+  elAyarSesEsigi.value = ayarlar.sesEsigi ?? -30;
 }
 
 elAyarGurultuSuppression.addEventListener('change', async () => {
   ayarlar.gurultuSuppression = elAyarGurultuSuppression.checked;
   await ayarlariKaydet();
-  
-  if (room) {
-    const audioTrack = room.localParticipant.audioTrackPublications.values().next().value?.track;
-    if (audioTrack?.mediaStreamTrack) {
-      const settings = audioTrack.mediaStreamTrack.getSettings?.();
-      if (settings) {
-        settings.noiseSuppression = elAyarGurultuSuppression.checked;
-        await audioTrack.mediaStreamTrack.applyConstraints?.({
-          noiseSuppression: elAyarGurultuSuppression.checked
-        }).catch(() => {
-          // Tarayıcı desteklemiyorsa sessiz başarısız ol
-        });
-      }
-    }
+  if (room && aktifKanal?.type === 'voice') {
+    await mikrofonKaynaginiDegistir();
   }
 });
 
@@ -652,7 +806,9 @@ async function cihazlariListele() {
 elAyarMikrofonSecim.addEventListener('change', async () => {
   ayarlar.mikrofonId = elAyarMikrofonSecim.value;
   await ayarlariKaydet();
-  if (room) room.switchActiveDevice('audioinput', ayarlar.mikrofonId);
+  if (room && aktifKanal?.type === 'voice') {
+    await mikrofonKaynaginiDegistir();
+  }
 });
 
 elAyarHoparlorSecim.addEventListener('change', async () => {

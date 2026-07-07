@@ -70,13 +70,16 @@
           <video id="yayinVideo" autoplay playsinline></video>
           <button id="btnTamEkran" class="buton-tam-ekran" title="Tam ekran">⛶</button>
         </div>
-
         <div id="sohbetPaneli" class="sohbet-paneli gizli">
           <div id="sohbetMesajlari" class="sohbet-mesajlari"></div>
           <div class="sohbet-giris">
             <input id="sohbetInput" type="text" placeholder="Mesaj yaz..." maxlength="500" />
             <button id="btnSohbetGonder">Gönder</button>
           </div>
+        </div>
+        <div id="katilimciListesiPanel" class="katilimci-listesi-panel gizli">
+          <div class="katilimci-listesi-baslik">Çevrimiçi</div>
+          <div id="cevrimiciListesi" class="cevrimici-listesi"></div>
         </div>
       </div>
     </div>
@@ -104,6 +107,12 @@
           <input id="ayarGurultuSuppression" type="checkbox" />
           Gürültü Engelleme (Noise Cancellation)
         </label>
+
+        <label>Ses Eşiği (Voice Activation)</label>
+        <input id="ayarSesEsigi" type="range" min="-60" max="0" value="-30" />
+        <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
+          <span id="sesEsigiMetin">-30 dB</span> — daha düşük = daha hassas
+        </span>
       </div>
     
       <div class="sekme-icerik gizli" data-icerik="gorunum">

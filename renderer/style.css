@@ -319,3 +319,19 @@ body {
   font-size: 16px;
 }
 .buton-tam-ekran:hover { background: rgba(0,0,0,0.75); }
+
+.katilimci-listesi-panel {
+  width: 220px;
+  margin-left: auto;
+  background: var(--bg-3);
+  border-left: 1px solid var(--kenar);
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.katilimci-listesi-panel.gizli { display: none; }
+.katilimci-listesi-baslik { font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 600; }
+.cevrimici-listesi { display: flex; flex-direction: column; gap: 6px; }
+.cevrimici-ogesi { font-size: 12px; color: var(--metin-soluk); padding: 6px; background: var(--bg-2); border-radius: 4px; }
+.cevrimici-ogesi.aktif { color: var(--metin); background: var(--bg-4); }
