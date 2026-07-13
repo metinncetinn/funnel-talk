@@ -38,30 +38,36 @@ function ayarlariOku() {
   }
 }
 
+function kisayolKaydetTekli(accelerator, olayAdi) {
+  try {
+    globalShortcut.register(accelerator, () => {
+      mainWindow?.webContents.send('kisayol-tetiklendi', olayAdi);
+    });
+    return globalShortcut.isRegistered(accelerator);
+  } catch (e) {
+    console.warn('Kısayol kaydedilemedi:', accelerator, e);
+    return false;
+  }
+}
+
 function kisayollariKaydet(kisayollar) {
   globalShortcut.unregisterAll();
+  const sonuclar = {};
   if (kisayollar?.mikrofonAcKapat) {
-    try {
-      globalShortcut.register(kisayollar.mikrofonAcKapat, () => {
-        mainWindow?.webContents.send('kisayol-tetiklendi', 'mikrofon');
-      });
-    } catch (e) { console.warn('Kısayol kaydedilemedi:', kisayollar.mikrofonAcKapat, e); }
+    sonuclar.mikrofonAcKapat = kisayolKaydetTekli(kisayollar.mikrofonAcKapat, 'mikrofon');
   }
   if (kisayollar?.yayinDurdur) {
-    try {
-      globalShortcut.register(kisayollar.yayinDurdur, () => {
-        mainWindow?.webContents.send('kisayol-tetiklendi', 'yayinDurdur');
-      });
-    } catch (e) { console.warn('Kısayol kaydedilemedi:', kisayollar.yayinDurdur, e); }
+    sonuclar.yayinDurdur = kisayolKaydetTekli(kisayollar.yayinDurdur, 'yayinDurdur');
   }
+  return sonuclar;
 }
 
 ipcMain.handle('get-settings', () => ayarlariOku());
 
 ipcMain.handle('save-settings', (_event, ayarlar) => {
   fs.writeFileSync(ayarlarDosyasi, JSON.stringify(ayarlar), 'utf-8');
-  kisayollariKaydet(ayarlar.kisayollar);
-  return true;
+  const kisayolSonuclari = kisayollariKaydet(ayarlar.kisayollar);
+  return { basarili: true, kisayolSonuclari };
 });
 
 function createWindow() {

@@ -45,6 +45,7 @@ const elBtnSohbetGonder = document.getElementById('btnSohbetGonder');
 const elModal = document.getElementById('kaynakSecimModal');
 const elKaynakListesi = document.getElementById('kaynakListesi');
 const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
+const izleyenler = new Map(); // hedefKimlik -> Set(izleyen isimler)
 
 // ---- Durum ----
 let mevcutKullanici = null; // { name, email? }
@@ -152,7 +153,7 @@ async function init() {
 }
 
 async function ayarlariKaydet() {
-  await window.electronAPI.saveSettings(ayarlar);
+  return await window.electronAPI.saveSettings(ayarlar);
 }
 
 // ---- Giriş ekranı ----
@@ -270,6 +271,7 @@ async function kanalaGec(kanal) {
   }
   mikrofonuDurdurVeTemizle();
   sesElementleri.forEach((el) => el.remove());
+  izleyenler.clear();
   sesElementleri.clear();
   elYayinAlani.classList.add('gizli');
   elSohbetMesajlari.innerHTML = '';
@@ -391,10 +393,18 @@ function baglaOlayDinleyicileri() {
   // ---- Sohbet mesajlari LiveKit veri kanali uzerinden ----
   room.on(RoomEvent.DataReceived, (payload) => {
     try {
-      const mesaj = JSON.parse(new TextDecoder().decode(payload));
-      sohbetMesajiEkle(mesaj.yazar, mesaj.metin, false);
+      const veri = JSON.parse(new TextDecoder().decode(payload));
+      if (veri.tip === 'izleme-durumu') {
+        if (!izleyenler.has(veri.hedefKimlik)) izleyenler.set(veri.hedefKimlik, new Set());
+        const set = izleyenler.get(veri.hedefKimlik);
+        if (veri.izliyor) set.add(veri.izleyenAd);
+        else set.delete(veri.izleyenAd);
+        katilimcilariYenidenCiz();
+      } else {
+        sohbetMesajiEkle(veri.yazar, veri.metin, false);
+      }
     } catch (e) {
-      console.warn('Sohbet mesaji cozulemedi', e);
+      console.warn('Veri mesaji cozulemedi', e);
     }
   });
 
@@ -468,26 +478,28 @@ function katilimcilariYenidenCiz() {
         (p) => p.source === Track.Source.ScreenShare
       );
       if (ekranPub) {
-        const izleyiciListesi = [];
-        room.remoteParticipants.forEach((digerKatilimci) => {
-          digerKatilimci.videoTrackSubscriptions.forEach((track, pubId) => {
-            const pub = digerKatilimci.videoTrackPublications.get(pubId);
-            if (pub && pub.source === Track.Source.ScreenShare && 
-                katilimci.videoTrackPublications.has(pubId)) {
-              // Bu katılımcının yayınını diğeri izliyor
-              if (digerKatilimci !== room.localParticipant) {
-                izleyiciListesi.push(digerKatilimci.name || digerKatilimci.identity);
-              }
-            }
-          });
-        });
+        const kimlik = katilimciKimligi(katilimci);
+        const izleyenSet = izleyenler.get(kimlik) || new Set();
+        const izleniyor = ekranPub.isSubscribed;
+        const izleyiciMetni = izleyenSet.size > 0 ? ` (${[...izleyenSet].join(', ')} izliyor)` : '';
       
         const rozet = document.createElement('span');
-        const izleniyor = ekranPub.isSubscribed;
-        const izleyiciMetni = izleyiciListesi.length > 0 ? ` (${izleyiciListesi.join(', ')} izliyor)` : '';
         rozet.className = 'yayin-rozeti' + (izleniyor ? '' : ' izlemiyor');
-        rozet.textContent = izleniyor ? `🖥️ Yayın açık${izleyiciMetni}` : '🖥️ Yayın var · izle';
-        rozet.addEventListener('click', () => ekranPub.setSubscribed(!izleniyor));
+        rozet.textContent = izleniyor ? `🖥️ Yayın açık${izleyiciMetni}` : `🖥️ Yayın var · izle${izleyiciMetni}`;
+        rozet.addEventListener('click', () => {
+          const yeniDurum = !izleniyor;
+          ekranPub.setSubscribed(yeniDurum);
+          room.localParticipant.publishData(
+            new TextEncoder().encode(JSON.stringify({
+              tip: 'izleme-durumu',
+              hedefKimlik: kimlik,
+              izleyenAd: mevcutKullanici.name,
+              izliyor: yeniDurum
+            })),
+            { reliable: true }
+          );
+          katilimcilariYenidenCiz();
+        });
         satir.appendChild(rozet);
       }
     }
@@ -852,13 +864,29 @@ function kisayolKaydet(buton, anahtar) {
     if (e.ctrlKey || e.metaKey) parcalar.push('CommandOrControl');
     if (e.shiftKey) parcalar.push('Shift');
     if (e.altKey) parcalar.push('Alt');
-    parcalar.push(e.key.length === 1 ? e.key.toUpperCase() : e.key);
 
-    ayarlar.kisayollar[anahtar] = parcalar.join('+');
-    await ayarlariKaydet();
-    kisayolMetniGoster();
-    buton.classList.remove('kaydediliyor');
+    // En az bir değiştirici tuş (Ctrl/Alt/Shift) olmadan kısayol kabul etme —
+    // tek başına bir tuş (örn. sadece "M") genelde işletim sistemi tarafından reddedilir.
+    if (parcalar.length === 0) {
+      buton.textContent = '⚠️ Ctrl/Alt/Shift ile birlikte bas';
+      setTimeout(() => { buton.textContent = 'Tekrar dene'; }, 1500);
+      return;
+    }
+
+    parcalar.push(e.key.length === 1 ? e.key.toUpperCase() : e.key);
+    const kombinasyon = parcalar.join('+');
+
+    ayarlar.kisayollar[anahtar] = kombinasyon;
+    const sonuc = await ayarlariKaydet();
     window.removeEventListener('keydown', dinleyici, true);
+    buton.classList.remove('kaydediliyor');
+
+    const basariliMi = sonuc?.kisayolSonuclari?.[anahtar];
+    if (basariliMi === false) {
+      buton.textContent = `⚠️ ${kombinasyon} kullanılamıyor (başka uygulama kullanıyor olabilir)`;
+    } else {
+      kisayolMetniGoster();
+    }
   };
   window.addEventListener('keydown', dinleyici, true);
 }
