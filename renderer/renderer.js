@@ -386,7 +386,7 @@ function baglaOlayDinleyicileri() {
     katilimcilariYenidenCiz();
   });
 
-  room.on(RoomEvent.ActiveSpeakersChanged, katilimcilariYenidenCiz);
+  room.on(RoomEvent.ActiveSpeakersChanged, konusanlariGuncelle);
   room.on(RoomEvent.TrackMuted, () => katilimcilariYenidenCiz());
   room.on(RoomEvent.TrackUnmuted, () => katilimcilariYenidenCiz());
 
@@ -397,8 +397,16 @@ function baglaOlayDinleyicileri() {
       if (veri.tip === 'izleme-durumu') {
         if (!izleyenler.has(veri.hedefKimlik)) izleyenler.set(veri.hedefKimlik, new Set());
         const set = izleyenler.get(veri.hedefKimlik);
+        const yeniIzleyiciMi = veri.izliyor && !set.has(veri.izleyenAd);
+
         if (veri.izliyor) set.add(veri.izleyenAd);
         else set.delete(veri.izleyenAd);
+
+        // Yayının sahibi bensem ve biri yeni izlemeye başladıysa bildirim sesi çal
+        if (yeniIzleyiciMi && veri.hedefKimlik === cihazKimligim) {
+          document.getElementById('sesYayinIzleyici').play().catch(() => {});
+        }
+
         katilimcilariYenidenCiz();
       } else {
         sohbetMesajiEkle(veri.yazar, veri.metin, false);
@@ -406,17 +414,6 @@ function baglaOlayDinleyicileri() {
     } catch (e) {
       console.warn('Veri mesaji cozulemedi', e);
     }
-  });
-
-  room.on(RoomEvent.Disconnected, () => {
-    document.getElementById('sesCikiyor').play().catch(() => {});
-    mikrofonuDurdurVeTemizle();
-    aktifKanal = null;
-    elAktifKanalAdi.textContent = 'Bir kanal seç';
-    elBtnMikrofon.classList.add('gizli');
-    elBtnEkranPaylas.classList.add('gizli');
-    elBtnKanaldanAyril.classList.add('gizli');
-    kanalListesiniCiz();
   });
 }
 
@@ -431,6 +428,7 @@ function katilimcilariYenidenCiz() {
     const benMi = katilimci === room.localParticipant;
     const satir = document.createElement('div');
     satir.className = 'kisi-satir';
+    satir.dataset.sid = katilimci.sid;
 
     const adSatiri = document.createElement('div');
     adSatiri.className = 'kisi-ad';
@@ -438,6 +436,7 @@ function katilimcilariYenidenCiz() {
     const susturulmus = mikrofonYayini ? mikrofonYayini.isMuted : (benMi ? !mikrofonAcik : false);
 
     const adSpan = document.createElement('span');
+    adSpan.className = 'ad-metni';
     adSpan.textContent = (katilimci.name || katilimci.identity) + (benMi ? ' (sen)' : '') + (susturulmus ? ' 🔇' : '');
     if (konusanlar.has(katilimci.sid)) adSpan.classList.add('rozet-konusuyor');
     adSatiri.appendChild(adSpan);
@@ -505,6 +504,14 @@ function katilimcilariYenidenCiz() {
     }
 
     elKatilimcilar.appendChild(satir);
+  });
+}
+function konusanlariGuncelle() {
+  if (!room) return;
+  const konusanlar = new Set((room.activeSpeakers || []).map((p) => p.sid));
+  document.querySelectorAll('#katilimcilar .kisi-satir').forEach((satir) => {
+    const adSpan = satir.querySelector('.ad-metni');
+    if (adSpan) adSpan.classList.toggle('rozet-konusuyor', konusanlar.has(satir.dataset.sid));
   });
 }
 
