@@ -208,11 +208,12 @@ body {
   margin-top: 6px;
   font-size: 11px;
   background: var(--vurgu);
+  color: #fff;
   padding: 2px 8px;
   border-radius: 10px;
   cursor: pointer;
 }
-.yayin-rozeti.izlemiyor { background: #444; }
+.yayin-rozeti.izlemiyor { background: var(--kenar); color: var(--metin); }
 
 /* Sohbet paneli */
 .sohbet-paneli {
