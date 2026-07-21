@@ -54,6 +54,13 @@ let mikrofonKaynakNode = null;
 let mikrofonAnalyserNode = null;
 let mikrofonGainNode = null;
 let mikrofonLimiterNode = null;
+let sesPaneliAudioContext = null;
+let sesPaneliGainNode = null;
+let sesPaneliDestination = null;
+let sesPaneliTrack = null;
+let sesPaneliYerelMonitorEl = null;
+let sesListesi = [];
+let secilenSesDosyasi = null;
 let mikrofonDestinationNode = null;
 let mikrofonHamStream = null;
 let mikrofonYayinTrack = null;
@@ -271,6 +278,7 @@ async function kanalaGec(kanal) {
     room = null;
   }
   mikrofonuDurdurVeTemizle();
+  sesPaneliDurdur();
   sesElementleri.forEach((el) => el.remove());
   izleyenler.clear();
   sesElementleri.clear();
@@ -307,13 +315,16 @@ async function kanalaGec(kanal) {
     if (kanal.type === 'voice') {
       mikrofonAcik = true;
       await mikrofonuBaslatVeYayinla();
+      await sesPaneliBaslat();
       elBtnMikrofon.classList.remove('gizli');
       elBtnEkranPaylas.classList.remove('gizli');
+      elBtnSesPaneli.classList.remove('gizli');
       elBtnMikrofon.textContent = '🎙️';
       elBtnMikrofon.classList.remove('aktif-kapali');
     } else {
       elBtnMikrofon.classList.add('gizli');
       elBtnEkranPaylas.classList.add('gizli');
+      elBtnSesPaneli.classList.add('gizli');
     }
     elBtnKanaldanAyril.classList.remove('gizli');
     aktifKanal = kanal;
@@ -339,8 +350,10 @@ function baglaOlayDinleyicileri() {
   });
   room.on(RoomEvent.ParticipantDisconnected, (p) => {
     document.getElementById('sesCikiyor').play().catch(() => {});
-    sesElementleri.get(p.sid)?.remove();
-    sesElementleri.delete(p.sid);
+    p.audioTrackPublications.forEach((pub) => {
+      sesElementleri.get(pub.trackSid)?.remove();
+      sesElementleri.delete(pub.trackSid);
+    });
     katilimcilariYenidenCiz();
   });
 
@@ -368,7 +381,7 @@ function baglaOlayDinleyicileri() {
         el.setSinkId(ayarlar.hoparlorId).catch(() => {});
       }
       document.body.appendChild(el);
-      sesElementleri.set(participant.sid, el);
+      sesElementleri.set(publication.trackSid, el);
       sesTercihiUygula(participant);
     } else if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
       track.attach(elYayinVideo);
@@ -380,6 +393,7 @@ function baglaOlayDinleyicileri() {
 
   room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
     track.detach();
+    sesElementleri.delete(publication.trackSid);
     if (publication.source === Track.Source.ScreenShare && izlenenYayinKimlik === participant.sid) {
       elYayinAlani.classList.add('gizli');
       izlenenYayinKimlik = null;
@@ -416,6 +430,19 @@ function baglaOlayDinleyicileri() {
       console.warn('Veri mesaji cozulemedi', e);
     }
   });
+
+  room.on(RoomEvent.Disconnected, () => {
+    document.getElementById('sesCikiyor').play().catch(() => {});
+    mikrofonuDurdurVeTemizle();
+    sesPaneliDurdur();
+    aktifKanal = null;
+    elAktifKanalAdi.textContent = 'Bir kanal seç';
+    elBtnMikrofon.classList.add('gizli');
+    elBtnEkranPaylas.classList.add('gizli');
+    elBtnSesPaneli.classList.add('gizli');
+    elBtnKanaldanAyril.classList.add('gizli');
+    kanalListesiniCiz();
+  });
 }
 
 function katilimcilariYenidenCiz() {
@@ -433,7 +460,7 @@ function katilimcilariYenidenCiz() {
 
     const adSatiri = document.createElement('div');
     adSatiri.className = 'kisi-ad';
-    const mikrofonYayini = [...katilimci.audioTrackPublications.values()][0];
+    const mikrofonYayini = [...katilimci.audioTrackPublications.values()].find(p => p.source === Track.Source.Microphone);
     const susturulmus = mikrofonYayini ? mikrofonYayini.isMuted : (benMi ? !mikrofonAcik : false);
 
     const adSpan = document.createElement('span');
@@ -654,6 +681,63 @@ function mikrofonuDurdurVeTemizle() {
   mikrofonLimiterNode = null;
   mikrofonDestinationNode = null;
 }
+async function sesPaneliBaslat() {
+  try {
+    sesPaneliAudioContext = new AudioContext();
+    sesPaneliGainNode = sesPaneliAudioContext.createGain();
+    sesPaneliGainNode.gain.value = (ayarlar.sesPaneliSeviyesi ?? 100) / 100;
+
+    sesPaneliDestination = sesPaneliAudioContext.createMediaStreamDestination(); // digerlerine gidecek
+    const yerelDestination = sesPaneliAudioContext.createMediaStreamDestination(); // kendi hoparlorune gidecek
+
+    sesPaneliGainNode.connect(sesPaneliDestination);
+    sesPaneliGainNode.connect(yerelDestination);
+
+    sesPaneliYerelMonitorEl = new Audio();
+    sesPaneliYerelMonitorEl.srcObject = yerelDestination.stream;
+    sesPaneliYerelMonitorEl.autoplay = true;
+    if (ayarlar.hoparlorId && sesPaneliYerelMonitorEl.setSinkId) {
+      sesPaneliYerelMonitorEl.setSinkId(ayarlar.hoparlorId).catch(() => {});
+    }
+
+    const track = sesPaneliDestination.stream.getAudioTracks()[0];
+    sesPaneliTrack = new LivekitClient.LocalAudioTrack(track);
+    await room.localParticipant.publishTrack(sesPaneliTrack, { source: Track.Source.Unknown, name: 'sesPaneli' });
+  } catch (e) {
+    console.warn('Ses paneli başlatılamadı', e);
+  }
+}
+
+function sesPaneliDurdur() {
+  if (sesPaneliTrack && room) {
+    room.localParticipant.unpublishTrack(sesPaneliTrack).catch(() => {});
+    sesPaneliTrack.stop();
+    sesPaneliTrack = null;
+  }
+  if (sesPaneliYerelMonitorEl) {
+    sesPaneliYerelMonitorEl.pause();
+    sesPaneliYerelMonitorEl.srcObject = null;
+    sesPaneliYerelMonitorEl = null;
+  }
+  if (sesPaneliAudioContext) { sesPaneliAudioContext.close().catch(() => {}); sesPaneliAudioContext = null; }
+  sesPaneliGainNode = null;
+  sesPaneliDestination = null;
+}
+
+async function sesCal(sesUrl) {
+  if (!sesPaneliAudioContext || !sesPaneliGainNode) return;
+  try {
+    const resp = await fetch(sesUrl);
+    const arrayBuffer = await resp.arrayBuffer();
+    const audioBuffer = await sesPaneliAudioContext.decodeAudioData(arrayBuffer);
+    const kaynak = sesPaneliAudioContext.createBufferSource();
+    kaynak.buffer = audioBuffer;
+    kaynak.connect(sesPaneliGainNode);
+    kaynak.start();
+  } catch (e) {
+    console.warn('Ses çalınamadı', e);
+  }
+}
 elBtnEkranPaylas.addEventListener('click', async () => {
   if (ekranPaylasimTrack) {
     await ekranPaylasimiDurdur();
@@ -804,6 +888,7 @@ function ayarlariGuncelle() {
   elAyarLimiterAcik.checked = ayarlar.limiterAcik ?? true;
   elAyarLimiterEsik.value = ayarlar.limiterEsik ?? -12;
   elLimiterEsikMetin.textContent = `${ayarlar.limiterEsik ?? -12} dB`;
+  elAyarSesPaneliSeviyesi.value = ayarlar.sesPaneliSeviyesi ?? 100;
 }
 
 elAyarGurultuSuppression.addEventListener('change', async () => {
@@ -867,6 +952,9 @@ elAyarHoparlorSecim.addEventListener('change', async () => {
   ayarlar.hoparlorId = elAyarHoparlorSecim.value;
   await ayarlariKaydet();
   if (room) room.switchActiveDevice('audiooutput', ayarlar.hoparlorId);
+  if (sesPaneliYerelMonitorEl?.setSinkId) {
+    sesPaneliYerelMonitorEl.setSinkId(ayarlar.hoparlorId).catch(() => {});
+  }
 });
 
 elAyarAnaSesSeviyesi.addEventListener('input', async () => {
@@ -954,5 +1042,114 @@ elAyarLimiterEsik.addEventListener('input', async () => {
   ayarlar.limiterEsik = Number(elAyarLimiterEsik.value);
   elLimiterEsikMetin.textContent = `${ayarlar.limiterEsik} dB`;
   if (mikrofonLimiterNode) mikrofonLimiterNode.threshold.value = ayarlar.limiterEsik;
+  await ayarlariKaydet();
+});
+
+const elBtnSesPaneli = document.getElementById('btnSesPaneli');
+const elSesPaneliModal = document.getElementById('sesPaneliModal');
+const elBtnSesPaneliKapat = document.getElementById('btnSesPaneliKapat');
+const elSesPaneliGrid = document.getElementById('sesPaneliGrid');
+const elYeniSesIsim = document.getElementById('yeniSesIsim');
+const elYeniSesDosya = document.getElementById('yeniSesDosya');
+const elBtnYeniSesEkle = document.getElementById('btnYeniSesEkle');
+const elSesEkleHata = document.getElementById('sesEkleHata');
+const elAyarSesPaneliSeviyesi = document.getElementById('ayarSesPaneliSeviyesi');
+
+elBtnSesPaneli.addEventListener('click', async () => {
+  await sesListesiniYukle();
+  elSesPaneliModal.classList.remove('gizli');
+});
+elBtnSesPaneliKapat.addEventListener('click', () => elSesPaneliModal.classList.add('gizli'));
+
+async function sesListesiniYukle() {
+  try {
+    const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/sesler`);
+    sesListesi = await resp.json();
+  } catch (e) {
+    sesListesi = [];
+  }
+  sesPaneliGridCiz();
+}
+
+function sesPaneliGridCiz() {
+  elSesPaneliGrid.innerHTML = '';
+  sesListesi.forEach((ses) => {
+    const btn = document.createElement('button');
+    btn.className = 'ses-tus';
+    btn.textContent = ses.isim;
+    btn.addEventListener('click', () => {
+      sesCal(`${window.APP_CONFIG.TOKEN_SERVER_URL}/ses-dosyalari/${ses.dosyaAdi}`);
+    });
+    elSesPaneliGrid.appendChild(btn);
+  });
+}
+
+function secilenSesGecerliMi() {
+  const isimGecerli = elYeniSesIsim.value.trim().length > 0 && elYeniSesIsim.value.length <= 15;
+  return isimGecerli && secilenSesDosyasi;
+}
+
+elYeniSesIsim.addEventListener('input', () => {
+  elBtnYeniSesEkle.disabled = !secilenSesGecerliMi();
+});
+
+elYeniSesDosya.addEventListener('change', () => {
+  elSesEkleHata.textContent = '';
+  secilenSesDosyasi = null;
+  elBtnYeniSesEkle.disabled = true;
+
+  const dosya = elYeniSesDosya.files[0];
+  if (!dosya) return;
+
+  const geciciAudio = new Audio();
+  geciciAudio.src = URL.createObjectURL(dosya);
+  geciciAudio.addEventListener('loadedmetadata', () => {
+    if (geciciAudio.duration > 5.5) {
+      elSesEkleHata.textContent = `Bu ses ${geciciAudio.duration.toFixed(1)} saniye — en fazla 5 saniye olabilir.`;
+      URL.revokeObjectURL(geciciAudio.src);
+      return;
+    }
+    secilenSesDosyasi = dosya;
+    elBtnYeniSesEkle.disabled = !secilenSesGecerliMi();
+    URL.revokeObjectURL(geciciAudio.src);
+  });
+  geciciAudio.addEventListener('error', () => {
+    elSesEkleHata.textContent = 'Bu dosya okunamadı, geçerli bir ses dosyası seç.';
+  });
+});
+
+elBtnYeniSesEkle.addEventListener('click', async () => {
+  if (!secilenSesGecerliMi()) return;
+  elBtnYeniSesEkle.disabled = true;
+  elBtnYeniSesEkle.textContent = 'Yükleniyor...';
+  elSesEkleHata.textContent = '';
+
+  try {
+    const formData = new FormData();
+    formData.append('isim', elYeniSesIsim.value.trim());
+    formData.append('dosya', secilenSesDosyasi);
+
+    const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/sesler`, {
+      method: 'POST',
+      body: formData
+    });
+    if (!resp.ok) throw new Error('Sunucu hatası: ' + resp.status);
+
+    elYeniSesIsim.value = '';
+    elYeniSesDosya.value = '';
+    secilenSesDosyasi = null;
+    await sesListesiniYukle();
+  } catch (e) {
+    elSesEkleHata.textContent = 'Ses eklenemedi, tekrar dene.';
+    console.error(e);
+  } finally {
+    elBtnYeniSesEkle.disabled = !secilenSesGecerliMi();
+    elBtnYeniSesEkle.textContent = 'Ekle';
+  }
+});
+
+elAyarSesPaneliSeviyesi.addEventListener('input', async () => {
+  ayarlar.sesPaneliSeviyesi = Number(elAyarSesPaneliSeviyesi.value);
+  if (sesPaneliGainNode) sesPaneliGainNode.gain.value = ayarlar.sesPaneliSeviyesi / 100;
   await ayarlariKaydet();
 });

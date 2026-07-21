@@ -51,6 +51,7 @@
         <div class="ust-bar-sag">
           <button id="btnMikrofon" class="buton-ikon gizli" title="Mikrofonu kapat/aç">🎙️</button>
           <button id="btnEkranPaylas" class="buton-ikon gizli" title="Ekran paylaş">🖥️</button>
+          <button id="btnSesPaneli" class="buton-ikon gizli" title="Ses Paneli">🔊</button>
           <button id="btnSohbetAcKapat" class="buton-ikon" title="Sohbeti göster/gizle">💬</button>
           <button id="btnKanaldanAyril" class="buton-ikon gizli" title="Kanaldan ayrıl">🚪</button>
         </div>
@@ -95,7 +96,10 @@
       
         <label>Ana ses seviyesi</label>
         <input id="ayarAnaSesSeviyesi" type="range" min="0" max="100" value="100" />
-
+        
+        <label>Ses Paneli Sesi</label>
+        <input id="ayarSesPaneliSeviyesi" type="range" min="0" max="100" value="100" />
+        
         <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
           <input id="ayarGurultuSuppression" type="checkbox" />
           Gürültü Engelleme (Noise Cancellation)
@@ -138,7 +142,20 @@
       <button id="btnAyarlarKapat" class="buton-ikincil ayarlar-kapat-btn">Kapat</button>
     </div>
   </div>
-  <!-- EKRAN KAYNAĞI SEÇİM PENCERESİ -->
+  <!-- SES PANELİ -->
+  <div id="sesPaneliModal" class="modal gizli">
+    <div class="modal-kutu ses-paneli-kutu">
+      <h3>Ses Paneli</h3>
+      <div id="sesPaneliGrid" class="ses-paneli-grid"></div>
+      <div class="ses-ekle-alani">
+        <input id="yeniSesIsim" type="text" placeholder="İsim (emoji olabilir, max 15 karakter)" maxlength="15" />
+        <input id="yeniSesDosya" type="file" accept="audio/*" />
+        <button id="btnYeniSesEkle" class="buton-ana" disabled>Ekle</button>
+        <p id="sesEkleHata" class="hata-mesaji"></p>
+      </div>
+      <button id="btnSesPaneliKapat" class="buton-ikincil ayarlar-kapat-btn">Kapat</button>
+    </div>
+  </div>
   <!-- EKRAN KAYNAĞI SEÇİM PENCERESİ -->
   <div id="kaynakSecimModal" class="modal gizli">
     <div class="modal-kutu">

@@ -336,3 +336,39 @@ body {
 .cevrimici-listesi { display: flex; flex-direction: column; gap: 6px; }
 .cevrimici-ogesi { font-size: 12px; color: var(--metin-soluk); padding: 6px; background: var(--bg-2); border-radius: 4px; }
 .cevrimici-ogesi.aktif { color: var(--metin); background: var(--bg-4); }
+
+.ses-paneli-kutu { width: 460px; }
+.ses-paneli-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.ses-tus {
+  padding: 14px 6px;
+  border-radius: 8px;
+  border: 1px solid var(--kenar);
+  background: var(--bg-1);
+  color: var(--metin);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: center;
+  word-break: break-word;
+}
+.ses-tus:hover { border-color: var(--vurgu); background: var(--bg-4); }
+.ses-ekle-alani {
+  border-top: 1px solid var(--kenar);
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ses-ekle-alani input[type="text"] {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid var(--kenar);
+  background: var(--bg-1);
+  color: var(--metin);
+}
