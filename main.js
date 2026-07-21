@@ -24,6 +24,8 @@ const varsayilanAyarlar = {
   mikrofonId: '',
   hoparlorId: '',
   anaSesSeviyesi: 100,
+  limiterAcik: true,
+  limiterEsik: -12,
   kisayollar: {
     mikrofonAcKapat: 'CommandOrControl+Shift+M',
     yayinDurdur: 'CommandOrControl+Shift+S'

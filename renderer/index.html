@@ -100,7 +100,14 @@
           <input id="ayarGurultuSuppression" type="checkbox" />
           Gürültü Engelleme (Noise Cancellation)
         </label>
-
+        <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
+          <input id="ayarLimiterAcik" type="checkbox" checked />
+          Yüksek Ses Sınırlayıcı (Limiter)
+        </label>
+        <input id="ayarLimiterEsik" type="range" min="-40" max="0" value="-12" />
+        <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
+          <span id="limiterEsikMetin">-12 dB</span> — daha düşük = daha erken devreye girer
+        </span>
         <label>Ses Eşiği (Voice Activation)</label>
         <input id="ayarSesEsigi" type="range" min="-60" max="0" value="-30" />
         <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">

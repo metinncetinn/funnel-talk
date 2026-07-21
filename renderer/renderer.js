@@ -53,6 +53,7 @@ let mikrofonAudioContext = null;
 let mikrofonKaynakNode = null;
 let mikrofonAnalyserNode = null;
 let mikrofonGainNode = null;
+let mikrofonLimiterNode = null;
 let mikrofonDestinationNode = null;
 let mikrofonHamStream = null;
 let mikrofonYayinTrack = null;
@@ -546,11 +547,21 @@ async function mikrofonuBaslatVeYayinla() {
     mikrofonAnalyserNode.fftSize = 512;
     mikrofonGainNode = mikrofonAudioContext.createGain();
     mikrofonGainNode.gain.value = 1;
+
+    // Limiter: ani yüksek sesleri (bağırma, mikrofona vurma vb.) otomatik bastırır.
+    // Normal konuşma seviyesine dokunmaz, sadece belirli bir eşiği (-12dB) geçen kısmı sıkıştırır.
+    mikrofonLimiterNode = mikrofonAudioContext.createDynamicsCompressor();
+    mikrofonLimiterNode.threshold.value = ayarlar.limiterEsik ?? -12;
+    mikrofonLimiterNode.knee.value = 6;
+    mikrofonLimiterNode.ratio.value = 16;
+    mikrofonLimiterNode.attack.value = 0.002;
+    mikrofonLimiterNode.release.value = 0.2;
+
     mikrofonDestinationNode = mikrofonAudioContext.createMediaStreamDestination();
 
     mikrofonKaynakNode.connect(mikrofonAnalyserNode);
     mikrofonAnalyserNode.connect(mikrofonGainNode);
-    mikrofonGainNode.connect(mikrofonDestinationNode);
+    limiterBaglantisiniUygula();
 
     const islenmisTrack = mikrofonDestinationNode.stream.getAudioTracks()[0];
     mikrofonYayinTrack = new LivekitClient.LocalAudioTrack(islenmisTrack);
@@ -561,6 +572,20 @@ async function mikrofonuBaslatVeYayinla() {
     sesEsigiOlcumuBaslat();
   } catch (e) {
     console.warn('Mikrofon başlatılamadı, sessiz katılıyorum.', e);
+  }
+}
+function limiterBaglantisiniUygula() {
+  if (!mikrofonGainNode || !mikrofonLimiterNode || !mikrofonDestinationNode) return;
+
+  // Önceki bağlantıları temizle (tekrar çağrılınca çift bağlanmasın)
+  try { mikrofonGainNode.disconnect(); } catch {}
+  try { mikrofonLimiterNode.disconnect(); } catch {}
+
+  if (ayarlar.limiterAcik ?? true) {
+    mikrofonGainNode.connect(mikrofonLimiterNode);
+    mikrofonLimiterNode.connect(mikrofonDestinationNode);
+  } else {
+    mikrofonGainNode.connect(mikrofonDestinationNode);
   }
 }
 async function mikrofonKaynaginiDegistir() {
@@ -626,6 +651,7 @@ function mikrofonuDurdurVeTemizle() {
   mikrofonKaynakNode = null;
   mikrofonAnalyserNode = null;
   mikrofonGainNode = null;
+  mikrofonLimiterNode = null;
   mikrofonDestinationNode = null;
 }
 elBtnEkranPaylas.addEventListener('click', async () => {
@@ -775,6 +801,9 @@ function ayarlariGuncelle() {
   elAyarAnaSesSeviyesi.value = Math.min(100, ayarlar.anaSesSeviyesi ?? 100);
   elAyarGurultuSuppression.checked = ayarlar.gurultuSuppression ?? false;
   elAyarSesEsigi.value = ayarlar.sesEsigi ?? -30;
+  elAyarLimiterAcik.checked = ayarlar.limiterAcik ?? true;
+  elAyarLimiterEsik.value = ayarlar.limiterEsik ?? -12;
+  elLimiterEsikMetin.textContent = `${ayarlar.limiterEsik ?? -12} dB`;
 }
 
 elAyarGurultuSuppression.addEventListener('change', async () => {
@@ -910,3 +939,20 @@ elBtnTamEkran.addEventListener('click', () => {
   }
 });
 elYayinVideo.addEventListener('dblclick', () => elBtnTamEkran.click());
+
+const elAyarLimiterAcik = document.getElementById('ayarLimiterAcik');
+const elAyarLimiterEsik = document.getElementById('ayarLimiterEsik');
+const elLimiterEsikMetin = document.getElementById('limiterEsikMetin');
+
+elAyarLimiterAcik.addEventListener('change', async () => {
+  ayarlar.limiterAcik = elAyarLimiterAcik.checked;
+  await ayarlariKaydet();
+  limiterBaglantisiniUygula();
+});
+
+elAyarLimiterEsik.addEventListener('input', async () => {
+  ayarlar.limiterEsik = Number(elAyarLimiterEsik.value);
+  elLimiterEsikMetin.textContent = `${ayarlar.limiterEsik} dB`;
+  if (mikrofonLimiterNode) mikrofonLimiterNode.threshold.value = ayarlar.limiterEsik;
+  await ayarlariKaydet();
+});
