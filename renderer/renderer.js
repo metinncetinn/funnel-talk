@@ -46,6 +46,7 @@ const elModal = document.getElementById('kaynakSecimModal');
 const elKaynakListesi = document.getElementById('kaynakListesi');
 const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
 const izleyenler = new Map(); // hedefKimlik -> Set(izleyen isimler)
+const katilimciGainNodeleri = new Map(); // trackSid -> GainNode
 
 // ---- Durum ----
 let mevcutKullanici = null; // { name, email? }
@@ -73,6 +74,21 @@ let ekranPaylasimTrack = null;
 let izlenenYayinKimlik = null;
 let cihazKimligim = null;
 let sesTercihleri = {}; // { cihazKimligi: seviye }
+let paylasilanAudioContext = null;
+
+function paylasilanContextAl() {
+  if (!paylasilanAudioContext || paylasilanAudioContext.state === 'closed') {
+    paylasilanAudioContext = new AudioContext();
+  }
+  return paylasilanAudioContext;
+}
+
+function paylasilanContextKapat() {
+  if (paylasilanAudioContext && paylasilanAudioContext.state !== 'closed') {
+    paylasilanAudioContext.close().catch(() => {});
+  }
+  paylasilanAudioContext = null;
+}
 const sesElementleri = new Map();
 
 
@@ -95,12 +111,8 @@ async function sesTercihiKaydet(kimlik, seviye) {
   await window.electronAPI.saveSesTercihleri(sesTercihleri);
 }
 
-function sesTercihiUygula(katilimci) {
-  const kimlik = katilimciKimligi(katilimci);
-  const kayitliSeviye = sesTercihleri[kimlik];
-  if (kayitliSeviye !== undefined) {
-    katilimci.setVolume(kayitliSeviye);
-  }
+function sesTercihiUygula() {
+  // Ses seviyeleri artık TrackSubscribed anında GainNode ile uygulanıyor, burada ekstra işlem gerekmiyor.
 }
 
 init();
@@ -279,9 +291,11 @@ async function kanalaGec(kanal) {
   }
   mikrofonuDurdurVeTemizle();
   sesPaneliDurdur();
+  paylasilanContextKapat();
   sesElementleri.forEach((el) => el.remove());
   izleyenler.clear();
   sesElementleri.clear();
+  katilimciGainNodeleri.clear();
   elYayinAlani.classList.add('gizli');
   elSohbetMesajlari.innerHTML = '';
   ekranPaylasimTrack = null;
@@ -374,15 +388,28 @@ function baglaOlayDinleyicileri() {
 
   room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
     if (track.kind === Track.Kind.Audio) {
-      const el = track.attach();
-      el.style.display = 'none';
+      const context = paylasilanContextAl();
+      const kaynak = context.createMediaStreamSource(new MediaStream([track.mediaStreamTrack]));
+      const gainNode = context.createGain();
+
+      const kimlik = katilimciKimligi(participant);
+      gainNode.gain.value = sesTercihleri[kimlik] ?? 1;
+
+      const destination = context.createMediaStreamDestination();
+      kaynak.connect(gainNode);
+      gainNode.connect(destination);
+
+      const el = new Audio();
+      el.srcObject = destination.stream;
+      el.autoplay = true;
       el.volume = (ayarlar.anaSesSeviyesi ?? 100) / 100;
       if (ayarlar.hoparlorId && el.setSinkId) {
         el.setSinkId(ayarlar.hoparlorId).catch(() => {});
       }
+
       document.body.appendChild(el);
       sesElementleri.set(publication.trackSid, el);
-      sesTercihiUygula(participant);
+      katilimciGainNodeleri.set(publication.trackSid, gainNode);
     } else if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
       track.attach(elYayinVideo);
       elYayinAlani.classList.remove('gizli');
@@ -394,6 +421,7 @@ function baglaOlayDinleyicileri() {
   room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
     track.detach();
     sesElementleri.delete(publication.trackSid);
+    katilimciGainNodeleri.delete(publication.trackSid);
     if (publication.source === Track.Source.ScreenShare && izlenenYayinKimlik === participant.sid) {
       elYayinAlani.classList.add('gizli');
       izlenenYayinKimlik = null;
@@ -435,6 +463,7 @@ function baglaOlayDinleyicileri() {
     document.getElementById('sesCikiyor').play().catch(() => {});
     mikrofonuDurdurVeTemizle();
     sesPaneliDurdur();
+    paylasilanContextKapat();
     aktifKanal = null;
     elAktifKanalAdi.textContent = 'Bir kanal seç';
     elBtnMikrofon.classList.add('gizli');
@@ -473,6 +502,7 @@ function katilimcilariYenidenCiz() {
     if (!benMi) {
       const kimlik = katilimciKimligi(katilimci);
       const kayitliSeviye = sesTercihleri[kimlik] ?? 1;
+      const gainNode = mikrofonYayini ? katilimciGainNodeleri.get(mikrofonYayini.trackSid) : null;
 
       const kontrolSatiri = document.createElement('div');
       kontrolSatiri.className = 'kisi-kontrol';
@@ -482,7 +512,7 @@ function katilimcilariYenidenCiz() {
       susturBtn.textContent = kayitliSeviye === 0 ? '🔇' : '🔊';
       susturBtn.addEventListener('click', async () => {
         const yeniDeger = kayitliSeviye === 0 ? 1 : 0;
-        katilimci.setVolume(yeniDeger);
+        if (gainNode) gainNode.gain.value = yeniDeger;
         await sesTercihiKaydet(kimlik, yeniDeger);
         katilimcilariYenidenCiz();
       });
@@ -491,11 +521,11 @@ function katilimcilariYenidenCiz() {
       const sesKaydirici = document.createElement('input');
       sesKaydirici.type = 'range';
       sesKaydirici.min = '0';
-      sesKaydirici.max = '150';
+      sesKaydirici.max = '300';
       sesKaydirici.value = String(kayitliSeviye * 100);
       sesKaydirici.addEventListener('input', async (e) => {
         const oran = Number(e.target.value) / 100;
-        katilimci.setVolume(oran);
+        if (gainNode) gainNode.gain.value = oran;
         await sesTercihiKaydet(kimlik, oran);
       });
       kontrolSatiri.appendChild(sesKaydirici);
@@ -568,7 +598,7 @@ async function mikrofonuBaslatVeYayinla() {
       }
     });
 
-    mikrofonAudioContext = new AudioContext();
+    mikrofonAudioContext = paylasilanContextAl();
     mikrofonKaynakNode = mikrofonAudioContext.createMediaStreamSource(mikrofonHamStream);
     mikrofonAnalyserNode = mikrofonAudioContext.createAnalyser();
     mikrofonAnalyserNode.fftSize = 512;
@@ -674,7 +704,7 @@ function mikrofonuDurdurVeTemizle() {
   }
   mikrofonHamStream?.getTracks().forEach((t) => t.stop());
   mikrofonHamStream = null;
-  if (mikrofonAudioContext) { mikrofonAudioContext.close().catch(() => {}); mikrofonAudioContext = null; }
+  mikrofonAudioContext = null;
   mikrofonKaynakNode = null;
   mikrofonAnalyserNode = null;
   mikrofonGainNode = null;
@@ -683,7 +713,7 @@ function mikrofonuDurdurVeTemizle() {
 }
 async function sesPaneliBaslat() {
   try {
-    sesPaneliAudioContext = new AudioContext();
+    sesPaneliAudioContext = paylasilanContextAl();
     sesPaneliGainNode = sesPaneliAudioContext.createGain();
     sesPaneliGainNode.gain.value = (ayarlar.sesPaneliSeviyesi ?? 100) / 100;
 
@@ -719,7 +749,7 @@ function sesPaneliDurdur() {
     sesPaneliYerelMonitorEl.srcObject = null;
     sesPaneliYerelMonitorEl = null;
   }
-  if (sesPaneliAudioContext) { sesPaneliAudioContext.close().catch(() => {}); sesPaneliAudioContext = null; }
+  sesPaneliAudioContext = null;
   sesPaneliGainNode = null;
   sesPaneliDestination = null;
 }
