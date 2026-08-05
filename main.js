@@ -1,4 +1,5 @@
 const { app, BrowserWindow, ipcMain, desktopCapturer, shell, globalShortcut, Tray, Menu } = require('electron');
+app.setName('SesliOdaVerisi');
 const path = require('path');
 const fs = require('fs');
 const http = require('http');

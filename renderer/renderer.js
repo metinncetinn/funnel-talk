@@ -46,7 +46,7 @@ const elModal = document.getElementById('kaynakSecimModal');
 const elKaynakListesi = document.getElementById('kaynakListesi');
 const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
 const izleyenler = new Map(); // hedefKimlik -> Set(izleyen isimler)
-const katilimciGainNodeleri = new Map(); // trackSid -> GainNode
+const sesKontrolKayitlari = new Map(); // trackSid -> { nativeEl, remoteTrack, boosted: null|{context,kaynak,gainNode,boostedEl} }
 
 // ---- Durum ----
 let mevcutKullanici = null; // { name, email? }
@@ -113,6 +113,63 @@ async function sesTercihiKaydet(kimlik, seviye) {
 
 function sesTercihiUygula() {
   // Ses seviyeleri artık TrackSubscribed anında GainNode ile uygulanıyor, burada ekstra işlem gerekmiyor.
+}
+// Ses seviyesini uygular. oran <= 1 ise basit/native yolu kullanır (hafif, güvenilir).
+// oran > 1 ise (yükseltme gerekiyorsa) SADECE O KİŞİ İÇİN Web Audio köprüsü kurar.
+function sesSeviyesiUygula(trackSid, oran) {
+  const kayit = sesKontrolKayitlari.get(trackSid);
+  if (!kayit) return;
+
+  const masterOran = (ayarlar.anaSesSeviyesi ?? 100) / 100;
+
+  if (oran <= 1.001) {
+    // Boost aktifse kapat, native moda geri dön
+    if (kayit.boosted) {
+      try { kayit.boosted.kaynak.disconnect(); kayit.boosted.gainNode.disconnect(); } catch {}
+      kayit.boosted.boostedEl?.remove();
+      kayit.boosted = null;
+    }
+    kayit.nativeEl.muted = false;
+    kayit.nativeEl.volume = Math.max(0, Math.min(1, oran * masterOran));
+  } else {
+    // %100 üstü - Web Audio köprüsü gerekiyor, sadece bu kişi için kur
+    kayit.nativeEl.muted = true; // native yoldan ses gitmesin, çift ses olmasın
+
+    if (!kayit.boosted) {
+      const context = paylasilanContextAl();
+      if (context.state === 'suspended') context.resume().catch(() => {});
+
+      const kaynak = context.createMediaStreamSource(new MediaStream([kayit.remoteTrack.mediaStreamTrack]));
+      const gainNode = context.createGain();
+      const destination = context.createMediaStreamDestination();
+      kaynak.connect(gainNode);
+      gainNode.connect(destination);
+
+      const boostedEl = new Audio();
+      boostedEl.srcObject = destination.stream;
+      boostedEl.autoplay = true;
+      if (ayarlar.hoparlorId && boostedEl.setSinkId) {
+        boostedEl.setSinkId(ayarlar.hoparlorId).catch(() => {});
+      }
+      document.body.appendChild(boostedEl);
+
+      kayit.boosted = { context, kaynak, gainNode, boostedEl };
+    }
+    kayit.boosted.gainNode.gain.value = oran * masterOran;
+  }
+}
+
+// Ana ses seviyesi değişince, hem native hem boost modundaki herkese yeniden uygula
+function tumSesSeviyeleriniYenile() {
+  if (!room) return;
+  room.remoteParticipants.forEach((katilimci) => {
+    const kimlik = katilimciKimligi(katilimci);
+    const oran = sesTercihleri[kimlik] ?? 1;
+    const mikrofonYayini = [...katilimci.audioTrackPublications.values()].find(
+      (p) => p.source === Track.Source.Microphone
+    );
+    if (mikrofonYayini) sesSeviyesiUygula(mikrofonYayini.trackSid, oran);
+  });
 }
 
 init();
@@ -295,7 +352,13 @@ async function kanalaGec(kanal) {
   sesElementleri.forEach((el) => el.remove());
   izleyenler.clear();
   sesElementleri.clear();
-  katilimciGainNodeleri.clear();
+  sesKontrolKayitlari.forEach((kayit) => {
+    if (kayit.boosted) {
+      try { kayit.boosted.kaynak.disconnect(); kayit.boosted.gainNode.disconnect(); } catch {}
+      kayit.boosted.boostedEl?.remove();
+    }
+  });
+  sesKontrolKayitlari.clear();
   elYayinAlani.classList.add('gizli');
   elSohbetMesajlari.innerHTML = '';
   ekranPaylasimTrack = null;
@@ -367,6 +430,12 @@ function baglaOlayDinleyicileri() {
     p.audioTrackPublications.forEach((pub) => {
       sesElementleri.get(pub.trackSid)?.remove();
       sesElementleri.delete(pub.trackSid);
+      const kayit = sesKontrolKayitlari.get(pub.trackSid);
+      if (kayit?.boosted) {
+        try { kayit.boosted.kaynak.disconnect(); kayit.boosted.gainNode.disconnect(); } catch {}
+        kayit.boosted.boostedEl?.remove();
+      }
+      sesKontrolKayitlari.delete(pub.trackSid);
     });
     katilimcilariYenidenCiz();
   });
@@ -388,28 +457,23 @@ function baglaOlayDinleyicileri() {
 
   room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
     if (track.kind === Track.Kind.Audio) {
-      const context = paylasilanContextAl();
-      const kaynak = context.createMediaStreamSource(new MediaStream([track.mediaStreamTrack]));
-      const gainNode = context.createGain();
-
-      const kimlik = katilimciKimligi(participant);
-      gainNode.gain.value = sesTercihleri[kimlik] ?? 1;
-
-      const destination = context.createMediaStreamDestination();
-      kaynak.connect(gainNode);
-      gainNode.connect(destination);
-
-      const el = new Audio();
-      el.srcObject = destination.stream;
-      el.autoplay = true;
-      el.volume = (ayarlar.anaSesSeviyesi ?? 100) / 100;
+      const el = track.attach(); // Basit, güvenilir yol - önceki sürümün davranışı
+      el.style.display = 'none';
       if (ayarlar.hoparlorId && el.setSinkId) {
         el.setSinkId(ayarlar.hoparlorId).catch(() => {});
       }
-
       document.body.appendChild(el);
       sesElementleri.set(publication.trackSid, el);
-      katilimciGainNodeleri.set(publication.trackSid, gainNode);
+    
+      sesKontrolKayitlari.set(publication.trackSid, {
+        nativeEl: el,
+        remoteTrack: track,
+        boosted: null
+      });
+
+      const kimlik = katilimciKimligi(participant);
+      const kayitliOran = sesTercihleri[kimlik] ?? 1;
+      sesSeviyesiUygula(publication.trackSid, kayitliOran);
     } else if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
       track.attach(elYayinVideo);
       elYayinAlani.classList.remove('gizli');
@@ -421,7 +485,12 @@ function baglaOlayDinleyicileri() {
   room.on(RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
     track.detach();
     sesElementleri.delete(publication.trackSid);
-    katilimciGainNodeleri.delete(publication.trackSid);
+    const kayit = sesKontrolKayitlari.get(publication.trackSid);
+    if (kayit?.boosted) {
+      try { kayit.boosted.kaynak.disconnect(); kayit.boosted.gainNode.disconnect(); } catch {}
+      kayit.boosted.boostedEl?.remove();
+    }
+    sesKontrolKayitlari.delete(publication.trackSid);
     if (publication.source === Track.Source.ScreenShare && izlenenYayinKimlik === participant.sid) {
       elYayinAlani.classList.add('gizli');
       izlenenYayinKimlik = null;
@@ -502,7 +571,7 @@ function katilimcilariYenidenCiz() {
     if (!benMi) {
       const kimlik = katilimciKimligi(katilimci);
       const kayitliSeviye = sesTercihleri[kimlik] ?? 1;
-      const gainNode = mikrofonYayini ? katilimciGainNodeleri.get(mikrofonYayini.trackSid) : null;
+      const trackSid = mikrofonYayini?.trackSid;
 
       const kontrolSatiri = document.createElement('div');
       kontrolSatiri.className = 'kisi-kontrol';
@@ -512,7 +581,7 @@ function katilimcilariYenidenCiz() {
       susturBtn.textContent = kayitliSeviye === 0 ? '🔇' : '🔊';
       susturBtn.addEventListener('click', async () => {
         const yeniDeger = kayitliSeviye === 0 ? 1 : 0;
-        if (gainNode) gainNode.gain.value = yeniDeger;
+        if (trackSid) sesSeviyesiUygula(trackSid, yeniDeger);
         await sesTercihiKaydet(kimlik, yeniDeger);
         katilimcilariYenidenCiz();
       });
@@ -525,7 +594,7 @@ function katilimcilariYenidenCiz() {
       sesKaydirici.value = String(kayitliSeviye * 100);
       sesKaydirici.addEventListener('input', async (e) => {
         const oran = Number(e.target.value) / 100;
-        if (gainNode) gainNode.gain.value = oran;
+        if (trackSid) sesSeviyesiUygula(trackSid, oran);
         await sesTercihiKaydet(kimlik, oran);
       });
       kontrolSatiri.appendChild(sesKaydirici);
@@ -989,7 +1058,7 @@ elAyarHoparlorSecim.addEventListener('change', async () => {
 
 elAyarAnaSesSeviyesi.addEventListener('input', async () => {
   ayarlar.anaSesSeviyesi = Number(elAyarAnaSesSeviyesi.value);
-  sesElementleri.forEach((el) => { el.volume = ayarlar.anaSesSeviyesi / 100; });
+  tumSesSeviyeleriniYenile();
   await ayarlariKaydet();
 });
 
