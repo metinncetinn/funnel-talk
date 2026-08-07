@@ -62,17 +62,17 @@ Arkadaş grupları için hafif, kendi kendine barındırılan (self-hosted) sesl
 ```
 ┌───────────────────┐        ┌───────────────────┐        ┌───────────────────────┐
 │  Electron İstemci │◄──────►│   LiveKit Cloud   │◄──────►│   Electron İstemci    │
-│    (Windows)      │  WebRTC│  (medya sunucusu) │  WebRTC│      (Windows)        │
-└─────────┬─────────┘        └───────────────────┘        └──────────┬────────────┘
-          │                                                          │
-          │              HTTPS (jeton isteği)                        │
-          ▼                                                          ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│          Token Sunucusu (Raspberry Pi + Tailscale Funnel)           │
-│   • Kimlik doğrulama jetonu üretir                                  │
-│   • Kanal başına isim çakışmasını engeller                          │
-│   • Soundboard dosyalarını barındırır                               │
-└─────────────────────────────────────────────────────────────────────┘
+│    (Windows)      │ WebRTC │  (medya sunucusu) │ WebRTC │      (Windows)        │
+└─────────┬─────────┘        └───────────────────┘        └───────────┬───────────┘
+          │                                                           │
+          │              HTTPS (jeton isteği)                         │
+          ▼                                                           ▼
+    ┌─────────────────────────────────────────────────────────────────────┐
+    │          Token Sunucusu (Raspberry Pi + Tailscale Funnel)           │
+    │   • Kimlik doğrulama jetonu üretir                                  │
+    │   • Kanal başına isim çakışmasını engeller                          │
+    │   • Soundboard dosyalarını barındırır                               │
+    └─────────────────────────────────────────────────────────────────────┘
 ```
 
 - **İstemci (Electron)** — arkadaşların bilgisayarına kurduğu masaüstü uygulaması. Tüm ses işleme (gürültü engelleme, limiter, eşik, ses seviyesi karışımı) istemci tarafında Web Audio API ile yapılır.
