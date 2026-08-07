@@ -60,19 +60,19 @@ A lightweight, self-hosted voice/video chat application for friend groups. Bring
 ## 🏗️ Architecture
 
 ```
-┌──────────────────┐        ┌──────────────────┐        ┌──────────────────────┐
-│  Electron Client  │◄──────►│   LiveKit Cloud   │◄──────►│  Electron Client      │
-│    (Windows)       │  WebRTC│  (media server)  │  WebRTC│    (Windows)          │
-└─────────┬─────────┘        └──────────────────┘        └──────────┬────────────┘
+┌───────────────────┐        ┌──────────────────┐        ┌───────────────────────┐
+│  Electron Client  │◄──────►│   LiveKit Cloud  │◄──────►│    Electron Client    │
+│    (Windows)      │ WebRTC │  (media server)  │ WebRTC │       (Windows)       │
+└─────────┬─────────┘        └──────────────────┘        └───────────┬───────────┘
           │                                                          │
-          │              HTTPS (token request)                       │
+          │                 HTTPS (token request)                    │
           ▼                                                          ▼
-┌────────────────────────────────────────────────────────────────────┐
-│               Token Server (Raspberry Pi + Tailscale Funnel)       │
-│   • Issues authentication tokens                                    │
-│   • Prevents duplicate names within a channel                       │
-│   • Hosts soundboard audio files                                    │
-└────────────────────────────────────────────────────────────────────┘
+     ┌────────────────────────────────────────────────────────────────────┐
+     │               Token Server (Raspberry Pi + Tailscale Funnel)       │
+     │   • Issues authentication tokens                                   │
+     │   • Prevents duplicate names within a channel                      │
+     │   • Hosts soundboard audio files                                   │
+     └────────────────────────────────────────────────────────────────────┘
 ```
 
 - **Client (Electron)** — the desktop app installed on each friend's computer. All audio processing (noise suppression, limiting, gating, volume mixing) happens client-side via the Web Audio API.
