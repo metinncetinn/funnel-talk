@@ -180,6 +180,7 @@ async function init() {
 
   ayarlar = await window.electronAPI.getSettings();
   document.body.dataset.theme = ayarlar.tema;
+  dilUygula(ayarlar.dil || 'tr');
   setInterval(() => {
     cevrimiciListesiGuncelle();
   }, 3000);
@@ -237,7 +238,7 @@ async function ayarlariKaydet() {
 elBtnDevam.addEventListener('click', () => {
   const ad = elGirisAd.value.trim();
   if (!ad) {
-    elGirisHata.textContent = 'Lütfen adını yaz.';
+    elGirisHata.textContent = t('girisHataAdYok');
     return;
   }
   elGirisHata.textContent = '';
@@ -250,7 +251,7 @@ elGirisAd.addEventListener('keydown', (e) => { if (e.key === 'Enter') elBtnDevam
 elBtnGoogleGiris.addEventListener('click', async () => {
   elGirisHata.textContent = '';
   elBtnGoogleGiris.disabled = true;
-  elBtnGoogleGiris.textContent = 'Tarayıcıda giriş yapılıyor...';
+  elBtnGoogleGiris.textContent = t('googleGirisYapiliyor');
   try {
     const profil = await window.electronAPI.googleLogin();
     mevcutKullanici = { name: profil.name, email: profil.email };
@@ -258,10 +259,10 @@ elBtnGoogleGiris.addEventListener('click', async () => {
     uygulamayaGec();
   } catch (err) {
     console.error(err);
-    elGirisHata.textContent = 'Google ile giriş yapılamadı.';
+    elGirisHata.textContent = t('girisHataGoogle');
   } finally {
     elBtnGoogleGiris.disabled = false;
-    elBtnGoogleGiris.textContent = 'Google ile Giriş Yap';
+    elBtnGoogleGiris.textContent = t('googleGiris');
   }
 });
 
@@ -302,7 +303,7 @@ function kanalListesiniCiz() {
 
     const katilimciListesi = document.createElement('div');
     katilimciListesi.className = 'kanal-katilimcilari acik'; // her zaman açık
-    katilimciListesi.innerHTML = '<span class="kanal-katilimci-yok">Yükleniyor...</span>';
+    katilimciListesi.innerHTML = `<span class="kanal-katilimci-yok">${t('yukleniyor')}</span>`;
 
     disKapsayici.appendChild(oge);
     disKapsayici.appendChild(katilimciListesi);
@@ -320,14 +321,14 @@ async function tumKanalKatilimcilariniGuncelle() {
       const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
       const isimler = await resp.json();
       if (isimler.length === 0) {
-        element.innerHTML = '<span class="kanal-katilimci-yok">Kimse yok</span>';
+        element.innerHTML = `<span class="kanal-katilimci-yok">${t('kimseYok')}</span>`;
       } else {
         element.innerHTML = isimler
           .map((ad) => `<div class="kanal-katilimci-satiri">🟢 ${ad}</div>`)
           .join('');
       }
     } catch (e) {
-      element.innerHTML = '<span class="kanal-katilimci-yok">Alınamadı</span>';
+      element.innerHTML = `<span class="kanal-katilimci-yok">${t('alinamadi')}</span>`;
     }
   }
 }
@@ -363,7 +364,7 @@ async function kanalaGec(kanal) {
   elSohbetMesajlari.innerHTML = '';
   ekranPaylasimTrack = null;
 
-  elAktifKanalAdi.textContent = 'Bağlanıyor...';
+  elAktifKanalAdi.textContent = t('baglaniyor');
 
   try {
     const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/token`, {
@@ -373,8 +374,8 @@ async function kanalaGec(kanal) {
     });
 
     if (resp.status === 409) {
-      elAktifKanalAdi.textContent = 'Bir kanal seç';
-      alert(`"${mevcutKullanici.name}" ismi bu kanalda zaten kullanılıyor. Lütfen adını değiştir (çıkış yapıp tekrar gir).`);
+      elAktifKanalAdi.textContent = t('birKanalSec');
+      alert(`"${mevcutKullanici.name}" ${t('isimKullaniliyorUyari')}`);
       return;
     }
     if (!resp.ok) throw new Error('Token sunucusu hata verdi: ' + resp.status);
@@ -412,8 +413,8 @@ async function kanalaGec(kanal) {
 
   } catch (err) {
     console.error(err);
-    elAktifKanalAdi.textContent = 'Bağlanılamadı';
-    alert('Bağlanılamadı. Token sunucusu adresini kontrol et.');
+    elAktifKanalAdi.textContent = t('baglanilamadi');
+    alert(t('baglanilamadiUyari'));
   }
 }
 
@@ -534,7 +535,7 @@ function baglaOlayDinleyicileri() {
     sesPaneliDurdur();
     paylasilanContextKapat();
     aktifKanal = null;
-    elAktifKanalAdi.textContent = 'Bir kanal seç';
+    elAktifKanalAdi.textContent = t('birKanalSec');
     elBtnMikrofon.classList.add('gizli');
     elBtnEkranPaylas.classList.add('gizli');
     elBtnSesPaneli.classList.add('gizli');
@@ -563,7 +564,7 @@ function katilimcilariYenidenCiz() {
 
     const adSpan = document.createElement('span');
     adSpan.className = 'ad-metni';
-    adSpan.textContent = (katilimci.name || katilimci.identity) + (benMi ? ' (sen)' : '') + (susturulmus ? ' 🔇' : '');
+    adSpan.textContent = (katilimci.name || katilimci.identity) + (benMi ? ' ' + t('sen') : '') + (susturulmus ? ' 🔇' : '');
     if (konusanlar.has(katilimci.sid)) adSpan.classList.add('rozet-konusuyor');
     adSatiri.appendChild(adSpan);
     satir.appendChild(adSatiri);
@@ -607,11 +608,11 @@ function katilimcilariYenidenCiz() {
         const kimlik = katilimciKimligi(katilimci);
         const izleyenSet = izleyenler.get(kimlik) || new Set();
         const izleniyor = ekranPub.isSubscribed;
-        const izleyiciMetni = izleyenSet.size > 0 ? ` (${[...izleyenSet].join(', ')} izliyor)` : '';
+        const izleyiciMetni = izleyenSet.size > 0 ? ` (${[...izleyenSet].join(', ')} ${t('izliyor')})` : '';
       
         const rozet = document.createElement('span');
         rozet.className = 'yayin-rozeti' + (izleniyor ? '' : ' izlemiyor');
-        rozet.textContent = izleniyor ? `🖥️ Yayın açık${izleyiciMetni}` : `🖥️ Yayın var · izle${izleyiciMetni}`;
+        rozet.textContent = izleniyor ? `${t('yayinAcik')}${izleyiciMetni}` : `${t('yayinVarIzle')}${izleyiciMetni}`;
         rozet.addEventListener('click', () => {
           const yeniDurum = !izleniyor;
           ekranPub.setSubscribed(yeniDurum);
@@ -887,11 +888,8 @@ async function kaynakSecildi(kaynakId) {
         mandatory: {
           chromeMediaSource: 'desktop',
           chromeMediaSourceId: kaynakId,
-          minWidth: width,
           maxWidth: width,
-          minHeight: height,
           maxHeight: height,
-          minFrameRate: frameRate,
           maxFrameRate: frameRate
         }
       }
@@ -1070,13 +1068,23 @@ document.querySelectorAll('.tema-secenek').forEach((btn) => {
   });
 });
 
+document.querySelectorAll('.dil-secenek').forEach((btn) => {
+  btn.addEventListener('click', async () => {
+    ayarlar.dil = btn.dataset.dil;
+    dilUygula(ayarlar.dil);
+    kisayolMetniGoster();
+    kanalListesiniCiz();
+    await ayarlariKaydet();
+  });
+});
+
 function kisayolMetniGoster() {
-  elKisayolMikrofonBtn.textContent = ayarlar.kisayollar?.mikrofonAcKapat || 'Atanmadı';
-  elKisayolYayinBtn.textContent = ayarlar.kisayollar?.yayinDurdur || 'Atanmadı';
+  elKisayolMikrofonBtn.textContent = ayarlar.kisayollar?.mikrofonAcKapat || t('kisayolAtanmadi');
+  elKisayolYayinBtn.textContent = ayarlar.kisayollar?.yayinDurdur || t('kisayolAtanmadi');
 }
 
 function kisayolKaydet(buton, anahtar) {
-  buton.textContent = 'Tuşlara bas...';
+  buton.textContent = t('kisayolTuslaraBas');
   buton.classList.add('kaydediliyor');
 
   const dinleyici = async (e) => {
@@ -1091,8 +1099,8 @@ function kisayolKaydet(buton, anahtar) {
     // En az bir değiştirici tuş (Ctrl/Alt/Shift) olmadan kısayol kabul etme —
     // tek başına bir tuş (örn. sadece "M") genelde işletim sistemi tarafından reddedilir.
     if (parcalar.length === 0) {
-      buton.textContent = '⚠️ Ctrl/Alt/Shift ile birlikte bas';
-      setTimeout(() => { buton.textContent = 'Tekrar dene'; }, 1500);
+      buton.textContent = t('kisayolModifierUyari');
+      setTimeout(() => { buton.textContent = t('kisayolTekrarDene'); }, 1500);
       return;
     }
 
@@ -1106,7 +1114,7 @@ function kisayolKaydet(buton, anahtar) {
 
     const basariliMi = sonuc?.kisayolSonuclari?.[anahtar];
     if (basariliMi === false) {
-      buton.textContent = `⚠️ ${kombinasyon} kullanılamıyor (başka uygulama kullanıyor olabilir)`;
+      buton.textContent = `⚠️ ${kombinasyon} ${t('kisayolBasarisiz')}`;
     } else {
       kisayolMetniGoster();
     }
@@ -1204,7 +1212,7 @@ elYeniSesDosya.addEventListener('change', () => {
   geciciAudio.src = URL.createObjectURL(dosya);
   geciciAudio.addEventListener('loadedmetadata', () => {
     if (geciciAudio.duration > 5.5) {
-      elSesEkleHata.textContent = `Bu ses ${geciciAudio.duration.toFixed(1)} saniye — en fazla 5 saniye olabilir.`;
+      elSesEkleHata.textContent = `${t('sesUzunlukFazla')} ${geciciAudio.duration.toFixed(1)} ${t('sesUzunHata')}`;
       URL.revokeObjectURL(geciciAudio.src);
       return;
     }
@@ -1213,14 +1221,14 @@ elYeniSesDosya.addEventListener('change', () => {
     URL.revokeObjectURL(geciciAudio.src);
   });
   geciciAudio.addEventListener('error', () => {
-    elSesEkleHata.textContent = 'Bu dosya okunamadı, geçerli bir ses dosyası seç.';
+      elSesEkleHata.textContent = t('sesGecersizDosya');
   });
 });
 
 elBtnYeniSesEkle.addEventListener('click', async () => {
   if (!secilenSesGecerliMi()) return;
   elBtnYeniSesEkle.disabled = true;
-  elBtnYeniSesEkle.textContent = 'Yükleniyor...';
+  elBtnYeniSesEkle.textContent = t('sesEklemeYukleniyor');
   elSesEkleHata.textContent = '';
 
   try {
@@ -1239,11 +1247,11 @@ elBtnYeniSesEkle.addEventListener('click', async () => {
     secilenSesDosyasi = null;
     await sesListesiniYukle();
   } catch (e) {
-    elSesEkleHata.textContent = 'Ses eklenemedi, tekrar dene.';
+    elSesEkleHata.textContent = t('sesEklenemedi');
     console.error(e);
   } finally {
     elBtnYeniSesEkle.disabled = !secilenSesGecerliMi();
-    elBtnYeniSesEkle.textContent = 'Ekle';
+    elBtnYeniSesEkle.textContent = t('ekle');
   }
 });
 

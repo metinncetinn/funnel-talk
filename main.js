@@ -22,6 +22,7 @@ const oturumDosyasi = path.join(app.getPath('userData'), 'oturum.json');
 const ayarlarDosyasi = path.join(app.getPath('userData'), 'ayarlar.json');
 const varsayilanAyarlar = {
   tema: 'koyu',
+  dil: 'tr',
   mikrofonId: '',
   hoparlorId: '',
   anaSesSeviyesi: 100,

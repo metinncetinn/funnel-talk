@@ -18,13 +18,13 @@
   <div id="ekran-giris" class="ekran">
     <div class="giris-kutu">
       <h1>Sesli Oda</h1>
-      <label>Adın</label>
-      <input id="girisAd" type="text" placeholder="Adını yaz" maxlength="20" />
-      <button id="btnDevam" class="buton-ana">Devam Et</button>
+      <label data-i18n="girisAdLabel">Adın</label>
+      <input id="girisAd" type="text" data-i18n-placeholder="girisAdPlaceholder" placeholder="Adını yaz" maxlength="20" />
+      <button id="btnDevam" class="buton-ana" data-i18n="devamEt">Devam Et</button>
 
       <div id="googleGirisAlani" class="gizli">
-        <div class="ayrac">veya</div>
-        <button id="btnGoogleGiris" class="buton-google">Google ile Giriş Yap</button>
+        <div class="ayrac" data-i18n="veya">veya</div>
+        <button id="btnGoogleGiris" class="buton-google" data-i18n="googleGiris">Google ile Giriş Yap</button>
       </div>
 
       <p id="girisHata" class="hata-mesaji"></p>
@@ -37,23 +37,23 @@
       <div class="kullanici-bilgi">
         <span id="aktifKullaniciAd">-</span>
         <div class="kullanici-butonlari">
-          <button id="btnAyarlar" class="buton-mini" title="Ayarlar">⚙️</button>
-          <button id="btnCikisYap" class="buton-mini" title="Çıkış yap">⏻</button>
+          <button id="btnAyarlar" class="buton-mini" data-i18n-title="ayarlarBaslik" title="Ayarlar">⚙️</button>
+          <button id="btnCikisYap" class="buton-mini" data-i18n-title="cikisYapBaslik" title="Çıkış yap">⏻</button>
         </div>
       </div>
-      <div class="kanal-baslik">KANALLAR</div>
+      <div class="kanal-baslik" data-i18n="kanallarBaslik">KANALLAR</div>
       <div class="kanal-listesi" id="kanalListesi"></div>
     </div>
 
     <div class="ana-icerik">
       <div class="ust-bar">
-        <span id="aktifKanalAdi">Bir kanal seç</span>
+        <span id="aktifKanalAdi" data-i18n="birKanalSec">Bir kanal seç</span>
         <div class="ust-bar-sag">
-          <button id="btnMikrofon" class="buton-ikon gizli" title="Mikrofonu kapat/aç">🎙️</button>
-          <button id="btnEkranPaylas" class="buton-ikon gizli" title="Ekran paylaş">🖥️</button>
-          <button id="btnSesPaneli" class="buton-ikon gizli" title="Ses Paneli">🔊</button>
-          <button id="btnSohbetAcKapat" class="buton-ikon" title="Sohbeti göster/gizle">💬</button>
-          <button id="btnKanaldanAyril" class="buton-ikon gizli" title="Kanaldan ayrıl">🚪</button>
+          <button id="btnMikrofon" class="buton-ikon gizli" data-i18n-title="mikrofonBaslik" title="Mikrofonu kapat/aç">🎙️</button>
+          <button id="btnEkranPaylas" class="buton-ikon gizli" data-i18n-title="ekranPaylasBaslik" title="Ekran paylaş">🖥️</button>
+          <button id="btnSesPaneli" class="buton-ikon gizli" data-i18n-title="sesPaneliBaslik" title="Ses Paneli">🔊</button>
+          <button id="btnSohbetAcKapat" class="buton-ikon" data-i18n-title="sohbetAcKapatBaslik" title="Sohbeti göster/gizle">💬</button>
+          <button id="btnKanaldanAyril" class="buton-ikon gizli" data-i18n-title="kanaldanAyrilBaslik" title="Kanaldan ayrıl">🚪</button>
         </div>
       </div>
 
@@ -67,12 +67,12 @@
         <div id="sohbetPaneli" class="sohbet-paneli gizli">
           <div id="sohbetMesajlari" class="sohbet-mesajlari"></div>
           <div class="sohbet-giris">
-            <input id="sohbetInput" type="text" placeholder="Mesaj yaz..." maxlength="500" />
-            <button id="btnSohbetGonder">Gönder</button>
+            <input id="sohbetInput" type="text" data-i18n-placeholder="mesajYaz" placeholder="Mesaj yaz..." maxlength="500" />
+            <button id="btnSohbetGonder" data-i18n="gonder">Gönder</button>
           </div>
         </div>
         <div id="katilimciListesiPanel" class="katilimci-listesi-panel gizli">
-          <div class="katilimci-listesi-baslik">Çevrimiçi</div>
+          <div class="katilimci-listesi-baslik" data-i18n="cevrimiciBaslik">Çevrimiçi</div>
           <div id="cevrimiciListesi" class="cevrimici-listesi"></div>
         </div>
       </div>
@@ -82,87 +82,93 @@
   <div id="ayarlarModal" class="modal gizli">
     <div class="modal-kutu ayarlar-kutu">
       <div class="ayarlar-sekmeler">
-        <button class="sekme-btn aktif" data-sekme="donanim">Donanım</button>
-        <button class="sekme-btn" data-sekme="gorunum">Görünüm</button>
-        <button class="sekme-btn" data-sekme="kisayollar">Kısayollar</button>
+        <button class="sekme-btn aktif" data-sekme="donanim" data-i18n="sekmeDonanim">Donanım</button>
+        <button class="sekme-btn" data-sekme="gorunum" data-i18n="sekmeGorunum">Görünüm</button>
+        <button class="sekme-btn" data-sekme="kisayollar" data-i18n="sekmeKisayollar">Kısayollar</button>
       </div>
     
       <div class="sekme-icerik" data-icerik="donanim">
-        <label>Mikrofon</label>
+        <label data-i18n="mikrofonLabel">Mikrofon</label>
         <select id="ayarMikrofonSecim"></select>
       
-        <label>Hoparlör</label>
+        <label data-i18n="hoparlorLabel">Hoparlör</label>
         <select id="ayarHoparlorSecim"></select>
       
-        <label>Ana ses seviyesi</label>
+        <label data-i18n="anaSesSeviyesi">Ana ses seviyesi</label>
         <input id="ayarAnaSesSeviyesi" type="range" min="0" max="100" value="100" />
-        
-        <label>Ses Paneli Sesi</label>
+      
+        <label data-i18n="sesPaneliSesi">Ses Paneli Sesi</label>
         <input id="ayarSesPaneliSeviyesi" type="range" min="0" max="100" value="100" />
-        
+      
         <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
           <input id="ayarGurultuSuppression" type="checkbox" />
-          Gürültü Engelleme (Noise Cancellation)
+          <span data-i18n="gurultuEngelleme">Gürültü Engelleme (Noise Cancellation)</span>
         </label>
         <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
           <input id="ayarLimiterAcik" type="checkbox" checked />
-          Yüksek Ses Sınırlayıcı (Limiter)
+          <span data-i18n="yuksekSesSinirlayici">Yüksek Ses Sınırlayıcı (Limiter)</span>
         </label>
         <input id="ayarLimiterEsik" type="range" min="-40" max="0" value="-12" />
         <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
-          <span id="limiterEsikMetin">-12 dB</span> — daha düşük = daha erken devreye girer
+          <span id="limiterEsikMetin">-12 dB</span> — <span data-i18n="limiterAciklama">daha düşük = daha erken devreye girer</span>
         </span>
-        <label>Ses Eşiği (Voice Activation)</label>
+        <label data-i18n="sesEsigiLabel">Ses Eşiği (Voice Activation)</label>
         <input id="ayarSesEsigi" type="range" min="-60" max="0" value="-30" />
         <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
-          <span id="sesEsigiMetin">-30 dB</span> — daha düşük = daha hassas
+          <span id="sesEsigiMetin">-30 dB</span> — <span data-i18n="sesEsigiAciklama">daha düşük = daha hassas</span>
         </span>
       </div>
     
       <div class="sekme-icerik gizli" data-icerik="gorunum">
-        <label>Tema</label>
+        <label data-i18n="temaLabel">Tema</label>
         <div class="tema-secenekleri">
-          <button class="tema-secenek" data-tema="koyu">🌑 Koyu</button>
-          <button class="tema-secenek" data-tema="acik">☀️ Açık</button>
-          <button class="tema-secenek" data-tema="gece-mavisi">🌌 Gece Mavisi</button>
-          <button class="tema-secenek" data-tema="mor">🟣 Mor</button>
+          <button class="tema-secenek" data-tema="koyu" data-i18n="temaKoyu">🌑 Koyu</button>
+          <button class="tema-secenek" data-tema="acik" data-i18n="temaAcik">☀️ Açık</button>
+          <button class="tema-secenek" data-tema="gece-mavisi" data-i18n="temaGeceMavisi">🌌 Gece Mavisi</button>
+          <button class="tema-secenek" data-tema="mor" data-i18n="temaMor">🟣 Mor</button>
+        </div>
+      
+        <label style="margin-top: 18px;" data-i18n="dilLabel">Dil</label>
+        <div class="tema-secenekleri">
+          <button class="dil-secenek" data-dil="tr">🇹🇷 Türkçe</button>
+          <button class="dil-secenek" data-dil="en">🇬🇧 English</button>
         </div>
       </div>
     
       <div class="sekme-icerik gizli" data-icerik="kisayollar">
-        <label>Mikrofon Aç/Kapat</label>
+        <label data-i18n="mikrofonAcKapatLabel">Mikrofon Aç/Kapat</label>
         <button id="kisayolMikrofonBtn" class="kisayol-btn">Atanmadı</button>
-      
-        <label>Yayını Durdur</label>
+
+        <label data-i18n="yayinDurdurLabel">Yayını Durdur</label>
         <button id="kisayolYayinBtn" class="kisayol-btn">Atanmadı</button>
-      
-        <p class="ayarlar-not">Bu kısayollar uygulama arka plandayken (başka pencerede) de çalışır.</p>
+
+        <p class="ayarlar-not" data-i18n="kisayolNot">Bu kısayollar uygulama arka plandayken (başka pencerede) de çalışır.</p>
       </div>
     
-      <button id="btnAyarlarKapat" class="buton-ikincil ayarlar-kapat-btn">Kapat</button>
+      <button id="btnAyarlarKapat" class="buton-ikincil ayarlar-kapat-btn" data-i18n="kapat">Kapat</button>
     </div>
   </div>
   <!-- SES PANELİ -->
   <div id="sesPaneliModal" class="modal gizli">
     <div class="modal-kutu ses-paneli-kutu">
-      <h3>Ses Paneli</h3>
+      <h3 data-i18n="sesPaneliBaslik">Ses Paneli</h3>
       <div id="sesPaneliGrid" class="ses-paneli-grid"></div>
       <div class="ses-ekle-alani">
-        <input id="yeniSesIsim" type="text" placeholder="İsim (emoji olabilir, max 15 karakter)" maxlength="15" />
+        <input id="yeniSesIsim" type="text" data-i18n-placeholder="sesIsimPlaceholder" placeholder="İsim (emoji olabilir, max 15 karakter)" maxlength="15" />
         <input id="yeniSesDosya" type="file" accept="audio/*" />
-        <button id="btnYeniSesEkle" class="buton-ana" disabled>Ekle</button>
+        <button id="btnYeniSesEkle" class="buton-ana" disabled data-i18n="ekle">Ekle</button>
         <p id="sesEkleHata" class="hata-mesaji"></p>
       </div>
-      <button id="btnSesPaneliKapat" class="buton-ikincil ayarlar-kapat-btn">Kapat</button>
+      <button id="btnSesPaneliKapat" class="buton-ikincil ayarlar-kapat-btn" data-i18n="kapat">Kapat</button>
     </div>
   </div>
   <!-- EKRAN KAYNAĞI SEÇİM PENCERESİ -->
   <div id="kaynakSecimModal" class="modal gizli">
     <div class="modal-kutu">
-      <h3>Neyi paylaşmak istersin?</h3>
+      <h3 data-i18n="neyiPaylas">Neyi paylaşmak istersin?</h3>
       <div id="kaynakListesi" class="kaynak-listesi"></div>
 
-      <label style="display: block; margin-top: 16px; font-size: 12px; color: var(--metin-soluk);">Kalite</label>
+      <label style="display: block; margin-top: 16px; font-size: 12px; color: var(--metin-soluk);" data-i18n="kaliteLabel">Kalite</label>
       <select id="kaliteSecim" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--kenar); background: var(--bg-1); color: var(--metin); margin-bottom: 12px;">
         <option value="4k">4K (3840x2160)</option>
         <option value="2k">2K (2560x1440)</option>
@@ -170,9 +176,10 @@
         <option value="720p">720p (1280x720)</option>
         <option value="480p">480p (854x480)</option>
       </select>
-      <button id="btnKaynakIptal" class="buton-ikincil">Vazgeç</button>
+      <button id="btnKaynakIptal" class="buton-ikincil" data-i18n="vazgec">Vazgeç</button>
     </div>
   </div>
+  <script src="lang.js"></script>
   <script src="lottie.min.js"></script>
   <script src="config.js"></script>
   <script src="livekit-client.umd.js"></script>
