@@ -71,6 +71,7 @@ let room = null;
 let aktifKanal = null; // config.js'teki kanal objesi
 let mikrofonAcik = true;
 let ekranPaylasimTrack = null;
+let sistemSesiTrack = null;
 let izlenenYayinKimlik = null;
 let cihazKimligim = null;
 let sesTercihleri = {}; // { cihazKimligi: seviye }
@@ -862,6 +863,13 @@ async function ekranPaylasimiDurdur() {
   await room.localParticipant.unpublishTrack(ekranPaylasimTrack);
   ekranPaylasimTrack.stop();
   ekranPaylasimTrack = null;
+
+  if (sistemSesiTrack) {
+    await room.localParticipant.unpublishTrack(sistemSesiTrack).catch(() => {});
+    sistemSesiTrack.stop();
+    sistemSesiTrack = null;
+  }
+
   elBtnEkranPaylas.classList.remove('aktif-kapali');
   document.getElementById('sesYayinBitti').play().catch(() => {});
 }
@@ -882,24 +890,39 @@ async function kaynakSecildi(kaynakId) {
     const seciliKalite = elKaliteSecim.value;
     const { width, height, frameRate, bitrate } = kaliteMap[seciliKalite] || kaliteMap['1080p'];
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: false,
-      video: {
-        mandatory: {
-          chromeMediaSource: 'desktop',
-          chromeMediaSourceId: kaynakId,
-          maxWidth: width,
-          maxHeight: height,
-          maxFrameRate: frameRate
-        }
+    const videoConstraints = {
+      mandatory: {
+        chromeMediaSource: 'desktop',
+        chromeMediaSourceId: kaynakId,
+        maxWidth: width,
+        maxHeight: height,
+        maxFrameRate: frameRate
       }
-    });
+    };
+
+    let stream;
+    let sistemSesiVarMi = false;
+    try {
+      // Once ses + goruntuyu birlikte iste (sadece "Tum Ekran" secilirse calisir)
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { mandatory: { chromeMediaSource: 'desktop' } },
+        video: videoConstraints
+      });
+      sistemSesiVarMi = stream.getAudioTracks().length > 0;
+    } catch (sesHatasi) {
+      // Ses alinamadi (ornegin tek bir pencere secildi) - sadece goruntu ile devam et
+      console.warn('Sistem sesi alinamadi, sadece goruntu paylasilacak.', sesHatasi);
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: videoConstraints
+      });
+    }
+
     const mediaTrack = stream.getVideoTracks()[0];
     mediaTrack.onended = () => elBtnEkranPaylas.click();
 
-    // Gerçek yakalanan çözünürlüğü kontrol et (monitör sınırı yüzünden istenenden düşük olabilir)
     const gercekAyar = mediaTrack.getSettings();
-    console.log('İstenen:', width + 'x' + height, '| Gerçek:', gercekAyar.width + 'x' + gercekAyar.height, '| FPS:', gercekAyar.frameRate);
+    console.log('İstenen:', width + 'x' + height, '| Gerçek:', gercekAyar.width + 'x' + gercekAyar.height, '| FPS:', gercekAyar.frameRate, '| Sistem sesi:', sistemSesiVarMi);
 
     ekranPaylasimTrack = new LivekitClient.LocalVideoTrack(mediaTrack);
     await room.localParticipant.publishTrack(ekranPaylasimTrack, {
@@ -911,6 +934,16 @@ async function kaynakSecildi(kaynakId) {
         maxFramerate: frameRate
       }
     });
+
+    if (sistemSesiVarMi) {
+      const sesTrack = stream.getAudioTracks()[0];
+      sistemSesiTrack = new LivekitClient.LocalAudioTrack(sesTrack);
+      await room.localParticipant.publishTrack(sistemSesiTrack, {
+        source: Track.Source.ScreenShareAudio,
+        name: 'screenAudio'
+      });
+    }
+
     elBtnEkranPaylas.classList.add('aktif-kapali');
     document.getElementById('sesYayinBasladi').play().catch(() => {});
   } catch (err) {
