@@ -388,7 +388,9 @@ async function kanalaGec(kanal) {
 
     await room.connect(url, token, { autoSubscribe: false });
     room.remoteParticipants.forEach((katilimci) => {
-      katilimci.audioTrackPublications.forEach((pub) => pub.setSubscribed(true));
+      katilimci.audioTrackPublications.forEach((pub) => {
+        if (pub.source === Track.Source.Microphone) pub.setSubscribed(true);
+      });
     });
 
     if (kanal.type === 'voice') {
@@ -442,8 +444,19 @@ function baglaOlayDinleyicileri() {
     katilimcilariYenidenCiz();
   });
 
-  room.on(RoomEvent.TrackPublished, (publication) => {
-    if (publication.kind === Track.Kind.Audio) publication.setSubscribed(true);
+  room.on(RoomEvent.TrackPublished, (publication, participant) => {
+    if (publication.kind === Track.Kind.Audio) {
+      if (publication.source === Track.Source.Microphone) {
+        publication.setSubscribed(true);
+      } else if (publication.source === Track.Source.ScreenShareAudio) {
+        // Ekran sesi izleme onayına bağlı: bu kişinin yayınını zaten izliyorsak sesini de otomatik ekle
+        const ekranPub = [...participant.videoTrackPublications.values()].find(
+          (p) => p.source === Track.Source.ScreenShare
+        );
+        if (ekranPub?.isSubscribed) publication.setSubscribed(true);
+        // aksi halde sessiz kalır, "izle" tıklanınca abone olur (aşağıdaki adım)
+      }
+    }
     if (publication.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
       document.getElementById('sesYayinBasladi').play().catch(() => {});
     }
@@ -617,6 +630,13 @@ function katilimcilariYenidenCiz() {
         rozet.addEventListener('click', () => {
           const yeniDurum = !izleniyor;
           ekranPub.setSubscribed(yeniDurum);
+                
+          // Ekran paylaşımıyla birlikte sistem sesi varsa, izleme durumuyla birlikte onu da aç/kapat
+          const sesPub = [...katilimci.audioTrackPublications.values()].find(
+            (p) => p.source === Track.Source.ScreenShareAudio
+          );
+          if (sesPub) sesPub.setSubscribed(yeniDurum);
+        
           room.localParticipant.publishData(
             new TextEncoder().encode(JSON.stringify({
               tip: 'izleme-durumu',
