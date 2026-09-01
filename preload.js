@@ -12,5 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onKisayolTetiklendi: (callback) => ipcRenderer.on('kisayol-tetiklendi', (_e, eylem) => callback(eylem)),
   getCihazKimligi: () => ipcRenderer.invoke('get-cihaz-kimligi'),
   getSesTercihleri: () => ipcRenderer.invoke('get-ses-tercihleri'),
-  saveSesTercihleri: (tercihler) => ipcRenderer.invoke('save-ses-tercihleri', tercihler)
+  saveSesTercihleri: (tercihler) => ipcRenderer.invoke('save-ses-tercihleri', tercihler),
+  onGuncellemeHazir: (callback) => ipcRenderer.on('guncelleme-hazir', (_e, bilgi) => callback(bilgi)),
+  installUpdate: () => ipcRenderer.invoke('install-update')
 });

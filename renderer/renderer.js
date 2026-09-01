@@ -176,6 +176,13 @@ function tumSesSeviyeleriniYenile() {
 init();
 
 async function init() {
+  window.electronAPI.onGuncellemeHazir((bilgi) => {
+    const surum = bilgi?.version ? ` (${bilgi.version})` : '';
+    if (window.confirm(`${t('guncellemeHazir')}${surum}`)) {
+      window.electronAPI.installUpdate();
+    }
+  });
+
   cihazKimligim = await window.electronAPI.getCihazKimligi();
   sesTercihleri = await window.electronAPI.getSesTercihleri();
 

@@ -16,6 +16,7 @@ const GOOGLE_CLIENT_SECRET = '';
 let mainWindow;
 let tray = null;
 let isQuitting = false;
+let indirilenGuncelleme = null;
 
 const oturumDosyasi = path.join(app.getPath('userData'), 'oturum.json');
 
@@ -93,6 +94,7 @@ function createWindow() {
   });
 
   mainWindow.setMenuBarVisibility(false);
+  mainWindow.webContents.on('did-finish-load', guncellemeBilgisiniGonder);
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   mainWindow.on('close', (e) => {
     if (!isQuitting) {
@@ -102,13 +104,38 @@ function createWindow() {
   });
 }
 
-let sonGuncellemeKontrolu = Date.now();
+function guncellemeBilgisiniGonder() {
+  if (indirilenGuncelleme && mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('guncelleme-hazir', {
+      version: indirilenGuncelleme.version
+    });
+  }
+}
+
+ipcMain.handle('install-update', () => {
+  if (!indirilenGuncelleme) return false;
+  isQuitting = true;
+  autoUpdater.quitAndInstall(false, true);
+  return true;
+});
+
+autoUpdater.autoDownload = true;
+autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.on('update-downloaded', (info) => {
+  indirilenGuncelleme = info;
+  guncellemeBilgisiniGonder();
+});
+
+let sonGuncellemeKontrolu = 0;
 
 function guncellemeKontroluGerekirse() {
+  if (!app.isPackaged) return;
   const simdi = Date.now();
   if (simdi - sonGuncellemeKontrolu > 15 * 60 * 1000) { // en fazla 15 dakikada bir
     sonGuncellemeKontrolu = simdi;
-    autoUpdater.checkForUpdatesAndNotify();
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      console.warn('Güncelleme kontrolü başarısız:', err.message);
+    });
   }
 }
 
@@ -258,13 +285,13 @@ ipcMain.handle('google-login', async () => {
 app.whenReady().then(() => {
   createWindow();
   trayOlustur();
-  autoUpdater.checkForUpdatesAndNotify();
+  guncellemeKontroluGerekirse();
   kisayollariKaydet(ayarlariOku().kisayollar);
 
   // Uygulama artik kapaninca arka plana gizlendigi icin (tray),
   // sadece ilk acilista degil, belirli araliklarla da kontrol edelim.
   setInterval(() => {
-    autoUpdater.checkForUpdatesAndNotify();
+    guncellemeKontroluGerekirse();
   }, 2 * 60 * 60 * 1000); // 2 saatte bir
 });
 app.on('before-quit', () => {
