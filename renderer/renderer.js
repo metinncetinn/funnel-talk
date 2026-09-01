@@ -186,28 +186,27 @@ async function init() {
     cevrimiciListesiGuncelle();
   }, 3000);
 
-  function cevrimiciListesiGuncelle() {
+  async function cevrimiciListesiGuncelle() {
     const elCevrimici = document.getElementById('cevrimiciListesi');
     if (!elCevrimici) return;
 
-    const cevrimiciKisiler = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key.startsWith('app-heartbeat-')) {
-        try {
-          const veri = JSON.parse(localStorage.getItem(key));
-          if (Date.now() - veri.timestamp < 10000) { // 10 saniyeden eski değilse
-            cevrimiciKisiler.push({ ad: veri.kullanici, kanalda: veri.kanalda });
-          }
-        } catch {}
+    const sonuc = await Promise.all(window.APP_CONFIG.CHANNELS.map(async (kanal) => {
+      try {
+        const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
+        if (!resp.ok) return [];
+        const isimler = await resp.json();
+        return isimler.map((ad) => ({ ad, kanal: kanal.name }));
+      } catch {
+        return [];
       }
-    }
+    }));
+    const cevrimiciKisiler = sonuc.flat();
 
     elCevrimici.innerHTML = '';
     cevrimiciKisiler.forEach((kisi) => {
       const div = document.createElement('div');
-      div.className = 'cevrimici-ogesi' + (kisi.kanalda ? ' aktif' : '');
-      div.textContent = (kisi.kanalda ? '🟢 ' : '⚪ ') + kisi.ad;
+      div.className = 'cevrimici-ogesi aktif';
+      div.textContent = `🟢 ${kisi.ad} · ${kisi.kanal}`;
       elCevrimici.appendChild(div);
     });
 
@@ -271,10 +270,10 @@ elBtnCikisYap.addEventListener('click', async () => {
   if (room) {
     const eskiRoom = room;
     room = null;
-    await ekranPaylasiminiDurdur(eskiRoom);
+    await ekranPaylasimiDurdur(eskiRoom);
     await eskiRoom.disconnect();
   } else {
-    await ekranPaylasiminiDurdur();
+    await ekranPaylasimiDurdur();
   }
   await window.electronAPI.clearUser();
   mevcutKullanici = null;
@@ -370,10 +369,10 @@ async function kanalaGec(kanal) {
   if (room) {
     const eskiRoom = room;
     room = null;
-    await ekranPaylasiminiDurdur(eskiRoom);
+    await ekranPaylasimiDurdur(eskiRoom);
     await eskiRoom.disconnect();
   } else {
-    await ekranPaylasiminiDurdur();
+    await ekranPaylasimiDurdur();
   }
   mikrofonuDurdurVeTemizle();
   sesPaneliDurdur();
@@ -571,7 +570,7 @@ function baglaOlayDinleyicileri() {
 
   room.on(RoomEvent.Disconnected, () => {
     document.getElementById('sesCikiyor').play().catch(() => {});
-    ekranPaylasiminiDurdur(null);
+    ekranPaylasimiDurdur(null);
     mikrofonuDurdurVeTemizle();
     sesPaneliDurdur();
     paylasilanContextKapat();
