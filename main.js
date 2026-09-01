@@ -97,6 +97,12 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', guncellemeBilgisiniGonder);
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   mainWindow.on('close', (e) => {
+    if (indirilenGuncelleme && !isQuitting) {
+      e.preventDefault();
+      isQuitting = true;
+      autoUpdater.quitAndInstall(false, true);
+      return;
+    }
     if (!isQuitting) {
       e.preventDefault();
       mainWindow.hide();
@@ -120,10 +126,18 @@ ipcMain.handle('install-update', () => {
 });
 
 autoUpdater.autoDownload = true;
-autoUpdater.autoInstallOnAppQuit = false;
+autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.on('update-downloaded', (info) => {
   indirilenGuncelleme = info;
   guncellemeBilgisiniGonder();
+});
+
+app.on('before-quit', (event) => {
+  if (indirilenGuncelleme && !isQuitting) {
+    event.preventDefault();
+    isQuitting = true;
+    autoUpdater.quitAndInstall(false, true);
+  }
 });
 
 let sonGuncellemeKontrolu = 0;
