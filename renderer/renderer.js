@@ -630,7 +630,7 @@ function katilimcilariYenidenCiz() {
         rozet.addEventListener('click', () => {
           const yeniDurum = !izleniyor;
           ekranPub.setSubscribed(yeniDurum);
-                
+
           // Ekran paylaşımıyla birlikte sistem sesi varsa, izleme durumuyla birlikte onu da aç/kapat
           const sesPub = [...katilimci.audioTrackPublications.values()].find(
             (p) => p.source === Track.Source.ScreenShareAudio
@@ -694,7 +694,7 @@ async function mikrofonuBaslatVeYayinla() {
     mikrofonAnalyserNode = mikrofonAudioContext.createAnalyser();
     mikrofonAnalyserNode.fftSize = 512;
     mikrofonGainNode = mikrofonAudioContext.createGain();
-    mikrofonGainNode.gain.value = 1;
+    mikrofonGainNode.gain.value = (ayarlar.mikrofonGirisSeviyesi ?? 100) / 100;
 
     // Limiter: ani yüksek sesleri (bağırma, mikrofona vurma vb.) otomatik bastırır.
     // Normal konuşma seviyesine dokunmaz, sadece belirli bir eşiği (-12dB) geçen kısmı sıkıştırır.
@@ -782,7 +782,8 @@ function sesEsigiOlcumuBaslat() {
 
     // Ani kesilme/çatlama olmasın diye yumuşak geçiş
     mevcutKazanc += (hedefKazanc - mevcutKazanc) * 0.3;
-    mikrofonGainNode.gain.setTargetAtTime(mevcutKazanc, mikrofonAudioContext.currentTime, 0.05);
+    const girisSeviyesi = (ayarlar.mikrofonGirisSeviyesi ?? 100) / 100;
+    mikrofonGainNode.gain.setTargetAtTime(mevcutKazanc * girisSeviyesi, mikrofonAudioContext.currentTime, 0.05);
   }, 50);
 }
 
@@ -1039,6 +1040,7 @@ function ayarlariGuncelle() {
   elAyarLimiterEsik.value = ayarlar.limiterEsik ?? -12;
   elLimiterEsikMetin.textContent = `${ayarlar.limiterEsik ?? -12} dB`;
   elAyarSesPaneliSeviyesi.value = ayarlar.sesPaneliSeviyesi ?? 100;
+  elAyarMikrofonGirisSeviyesi.value = ayarlar.mikrofonGirisSeviyesi ?? 100;
 }
 
 elAyarGurultuSuppression.addEventListener('change', async () => {
@@ -1310,6 +1312,24 @@ elBtnYeniSesEkle.addEventListener('click', async () => {
 
 elAyarSesPaneliSeviyesi.addEventListener('input', async () => {
   ayarlar.sesPaneliSeviyesi = Number(elAyarSesPaneliSeviyesi.value);
-  if (sesPaneliGainNode) sesPaneliGainNode.gain.value = ayarlar.sesPaneliSeviyesi / 100;
+  if (sesPaneliGainNode) {
+    sesPaneliGainNode.gain.value = ayarlar.sesPaneliSeviyesi / 100;
+  }
+  if (sesPaneliYerelMonitorEl) {
+    sesPaneliYerelMonitorEl.volume = 1; // gain node zaten seviyeyi ayarlıyor, element sabit 1 kalmalı
+  }
+  await ayarlariKaydet();
+});
+
+const elAyarMikrofonGirisSeviyesi = document.getElementById('ayarMikrofonGirisSeviyesi');
+
+elAyarMikrofonGirisSeviyesi.addEventListener('input', async () => {
+  ayarlar.mikrofonGirisSeviyesi = Number(elAyarMikrofonGirisSeviyesi.value);
+  if (mikrofonGainNode) {
+    // sesEsigiOlcumuBaslat de gain'i degistiriyor (gate icin), o yuzden temel seviyeyi
+    // ayri bir baz deger olarak tutup carpiyoruz - basit yontem: dogrudan ata,
+    // esik olcumu zaten periyodik olarak uzerine yazacak (0 veya 1 * mevcutKazanc)
+    mikrofonGainNode.gain.value = ayarlar.mikrofonGirisSeviyesi / 100;
+  }
   await ayarlariKaydet();
 });

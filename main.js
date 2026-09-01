@@ -26,6 +26,7 @@ const varsayilanAyarlar = {
   mikrofonId: '',
   hoparlorId: '',
   anaSesSeviyesi: 100,
+  mikrofonGirisSeviyesi: 100,
   sesPaneliSeviyesi: 100,
   limiterAcik: true,
   limiterEsik: -12,
