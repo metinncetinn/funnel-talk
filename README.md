@@ -127,8 +127,7 @@ Bu bölüm, projeyi sıfırdan ayağa kaldırmak isteyenler içindir.
 
 ```bash
 git clone <bu-repo>
-cd token-server
-npm install
+Sunucu projesi bu istemci deposundan ayrı çalıştırılır. Sunucu projesinde `npm install` çalıştırıp `.env` dosyasını oluşturun.
 cp .env.example .env
 ```
 
@@ -166,7 +165,7 @@ Bu size `https://cihaz-adiniz.tailxxxx.ts.net` gibi herkese açık bir HTTPS adr
 
 ### 3. Electron İstemcisini Yapılandırma
 
-`electron-app/renderer/config.js`:
+`renderer/config.js`:
 
 ```js
 window.APP_CONFIG = {
@@ -182,16 +181,15 @@ window.APP_CONFIG = {
 ### 4. Derleme
 
 ```bash
-cd electron-app
 npm install
 npm run build
 ```
 
-Kurulum dosyası `electron-app/dist/` klasöründe oluşur.
+Kurulum dosyası `dist/` klasöründe oluşur.
 
 ### 5. Otomatik Güncelleme (isteğe bağlı ama önerilir)
 
-`electron-app/package.json` içindeki `build.publish` alanını doldurun:
+`package.json` içindeki `build.publish` alanını doldurun:
 
 ```json
 "publish": {
@@ -216,7 +214,7 @@ Bu komut hem derler hem doğrudan GitHub Releases'e yükler. Kurulu istemciler b
 1. [Google Cloud Console](https://console.cloud.google.com)'da bir proje oluşturun.
 2. OAuth consent screen'i "External" olarak yapılandırın.
 3. **Desktop app** türünde bir OAuth Client ID oluşturun.
-4. `electron-app/main.js` dosyasının en üstüne Client ID/Secret'i girin:
+4. `main.js` dosyasının en üstüne Client ID/Secret'i girin:
 
 ```js
 const GOOGLE_CLIENT_ID = 'xxxxx';
@@ -231,10 +229,10 @@ Boş bırakılırsa Google ile giriş butonu otomatik gizlenir.
 
 | Dosya | Amaç |
 |---|---|
-| `electron-app/renderer/config.js` | Token sunucusu adresi, kanal listesi |
-| `electron-app/main.js` | Google OAuth bilgileri, pencere/tray davranışı |
+| `renderer/config.js` | Token sunucusu adresi, kanal listesi |
+| `main.js` | Google OAuth bilgileri, pencere/tray davranışı |
 | `token-server/.env` | LiveKit kimlik bilgileri |
-| `electron-app/package.json` → `build` | Uygulama adı, ikon, yayın (publish) ayarları |
+| `package.json` → `build` | Uygulama adı, ikon, yayın (publish) ayarları |
 
 ---
 
@@ -260,7 +258,7 @@ Ayarlar → Kısayollar sekmesinden özelleştirilebilir. Bu kısayollar uygulam
 ## 📋 Bilinen Sınırlamalar
 
 - Aynı anda yalnızca bir kişinin ekran paylaşımı ana alanda gösterilir.
-- Ekran paylaşımı yalnızca görüntü içerir; sistem sesi paylaşılmaz.
+- Ekran paylaşımı, işletim sistemi ve seçilen kaynağın izin verdiği durumlarda sistem sesini de paylaşır.
 - Metin sohbeti geçicidir (kanaldan ayrılınca/değiştirilince mesaj geçmişi silinir).
 - Uygulama şu an yalnızca Windows için paketlenmektedir.
 

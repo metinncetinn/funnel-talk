@@ -127,8 +127,7 @@ This section is for anyone who wants to stand up the whole stack from scratch.
 
 ```bash
 git clone <this-repo>
-cd token-server
-npm install
+The token server runs separately from this client repository. In the server project, run `npm install` and create the `.env` file.
 cp .env.example .env
 ```
 
@@ -166,7 +165,7 @@ This gives you a public HTTPS address like `https://your-device.tailxxxx.ts.net`
 
 ### 3. Configuring the Electron Client
 
-`electron-app/renderer/config.js`:
+`renderer/config.js`:
 
 ```js
 window.APP_CONFIG = {
@@ -182,16 +181,15 @@ window.APP_CONFIG = {
 ### 4. Building
 
 ```bash
-cd electron-app
 npm install
 npm run build
 ```
 
-The installer will be generated under `electron-app/dist/`.
+The installer will be generated under `dist/`.
 
 ### 5. Auto-Updates (optional but recommended)
 
-Fill in the `build.publish` field in `electron-app/package.json`:
+Fill in the `build.publish` field in `package.json`:
 
 ```json
 "publish": {
@@ -216,7 +214,7 @@ This command builds the app and uploads it directly to GitHub Releases. Installe
 1. Create a project in [Google Cloud Console](https://console.cloud.google.com).
 2. Configure the OAuth consent screen as "External".
 3. Create an OAuth Client ID of type **Desktop app**.
-4. Add the Client ID/Secret at the top of `electron-app/main.js`:
+4. Add the Client ID/Secret at the top of `main.js`:
 
 ```js
 const GOOGLE_CLIENT_ID = 'xxxxx';
@@ -231,10 +229,10 @@ Leaving these blank automatically hides the Google sign-in button.
 
 | File | Purpose |
 |---|---|
-| `electron-app/renderer/config.js` | Token server address, channel list |
-| `electron-app/main.js` | Google OAuth credentials, window/tray behavior |
+| `renderer/config.js` | Token server address, channel list |
+| `main.js` | Google OAuth credentials, window/tray behavior |
 | `token-server/.env` | LiveKit credentials |
-| `electron-app/package.json` → `build` | App name, icon, publish (release) settings |
+| `package.json` → `build` | App name, icon, publish (release) settings |
 
 ---
 
@@ -260,7 +258,7 @@ Customizable from Settings → Shortcuts. These shortcuts work globally, even wh
 ## 📋 Known Limitations
 
 - Only one person's screen share is shown in the main viewing area at a time.
-- Screen sharing captures video only; system audio is not shared.
+- Screen sharing can include system audio when the operating system and selected source allow it.
 - Text chat is ephemeral (message history clears on leaving/switching channels).
 - Currently packaged for Windows only.
 
@@ -272,7 +270,6 @@ Customizable from Settings → Shortcuts. These shortcuts work globally, even wh
 - [ ] Support for watching multiple simultaneous streams
 - [ ] Shared music playback via YouTube/link bot
 - [ ] macOS/Linux packaging support
-- [ ] In-app language selector
 
 ---
 

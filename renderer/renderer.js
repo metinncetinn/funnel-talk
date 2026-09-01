@@ -268,7 +268,14 @@ elBtnGoogleGiris.addEventListener('click', async () => {
 });
 
 elBtnCikisYap.addEventListener('click', async () => {
-  if (room) { room.disconnect(); room = null; }
+  if (room) {
+    const eskiRoom = room;
+    room = null;
+    await ekranPaylasiminiDurdur(eskiRoom);
+    await eskiRoom.disconnect();
+  } else {
+    await ekranPaylasiminiDurdur();
+  }
   await window.electronAPI.clearUser();
   mevcutKullanici = null;
   aktifKanal = null;
@@ -297,7 +304,12 @@ function kanalListesiniCiz() {
     const oge = document.createElement('div');
     oge.className = 'kanal-ogesi' + (aktifKanal?.name === kanal.name ? ' aktif' : '');
     const simge = kanal.type === 'text' ? '💬' : '🔊';
-    oge.innerHTML = `<span class="kanal-simge">${simge}</span><span>${kanal.name}</span>`;
+    const simgeSpan = document.createElement('span');
+    simgeSpan.className = 'kanal-simge';
+    simgeSpan.textContent = simge;
+    const adSpan = document.createElement('span');
+    adSpan.textContent = kanal.name;
+    oge.append(simgeSpan, adSpan);
 
     // Tık: kanala katıl
     oge.addEventListener('click', () => kanalaGec(kanal));
@@ -321,15 +333,26 @@ async function tumKanalKatilimcilariniGuncelle() {
     try {
       const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
       const isimler = await resp.json();
+      element.replaceChildren();
       if (isimler.length === 0) {
-        element.innerHTML = `<span class="kanal-katilimci-yok">${t('kimseYok')}</span>`;
+        const bos = document.createElement('span');
+        bos.className = 'kanal-katilimci-yok';
+        bos.textContent = t('kimseYok');
+        element.appendChild(bos);
       } else {
-        element.innerHTML = isimler
-          .map((ad) => `<div class="kanal-katilimci-satiri">🟢 ${ad}</div>`)
-          .join('');
+        isimler.forEach((ad) => {
+          const satir = document.createElement('div');
+          satir.className = 'kanal-katilimci-satiri';
+          satir.textContent = `🟢 ${ad}`;
+          element.appendChild(satir);
+        });
       }
     } catch (e) {
-      element.innerHTML = `<span class="kanal-katilimci-yok">${t('alinamadi')}</span>`;
+      element.replaceChildren();
+      const hata = document.createElement('span');
+      hata.className = 'kanal-katilimci-yok';
+      hata.textContent = t('alinamadi');
+      element.appendChild(hata);
     }
   }
 }
@@ -345,8 +368,12 @@ async function kanalaGec(kanal) {
   if (aktifKanal?.name === kanal.name) return;
 
   if (room) {
-    room.disconnect();
+    const eskiRoom = room;
     room = null;
+    await ekranPaylasiminiDurdur(eskiRoom);
+    await eskiRoom.disconnect();
+  } else {
+    await ekranPaylasiminiDurdur();
   }
   mikrofonuDurdurVeTemizle();
   sesPaneliDurdur();
@@ -363,7 +390,6 @@ async function kanalaGec(kanal) {
   sesKontrolKayitlari.clear();
   elYayinAlani.classList.add('gizli');
   elSohbetMesajlari.innerHTML = '';
-  ekranPaylasimTrack = null;
 
   elAktifKanalAdi.textContent = t('baglaniyor');
 
@@ -545,6 +571,7 @@ function baglaOlayDinleyicileri() {
 
   room.on(RoomEvent.Disconnected, () => {
     document.getElementById('sesCikiyor').play().catch(() => {});
+    ekranPaylasiminiDurdur(null);
     mikrofonuDurdurVeTemizle();
     sesPaneliDurdur();
     paylasilanContextKapat();
@@ -871,7 +898,11 @@ elBtnEkranPaylas.addEventListener('click', async () => {
   kaynaklar.forEach((kaynak) => {
     const oge = document.createElement('div');
     oge.className = 'kaynak-ogesi';
-    oge.innerHTML = `<img src="${kaynak.thumbnail}" /><span>${kaynak.name}</span>`;
+    const img = document.createElement('img');
+    img.src = kaynak.thumbnail;
+    const adSpan = document.createElement('span');
+    adSpan.textContent = kaynak.name;
+    oge.append(img, adSpan);
     oge.addEventListener('click', () => kaynakSecildi(kaynak.id));
     elKaynakListesi.appendChild(oge);
   });
@@ -879,19 +910,25 @@ elBtnEkranPaylas.addEventListener('click', async () => {
   const elKaliteSecim = document.getElementById('kaliteSecim');
 });
 
-async function ekranPaylasimiDurdur() {
-  if (!ekranPaylasimTrack || !room) return;
-  await room.localParticipant.unpublishTrack(ekranPaylasimTrack);
-  ekranPaylasimTrack.stop();
+async function ekranPaylasimiDurdur(oda = room) {
+  const eskiVideoTrack = ekranPaylasimTrack;
+  const eskiSesTrack = sistemSesiTrack;
   ekranPaylasimTrack = null;
+  sistemSesiTrack = null;
 
-  if (sistemSesiTrack) {
-    await room.localParticipant.unpublishTrack(sistemSesiTrack).catch(() => {});
-    sistemSesiTrack.stop();
-    sistemSesiTrack = null;
+  if (eskiVideoTrack && oda) {
+    await oda.localParticipant.unpublishTrack(eskiVideoTrack).catch(() => {});
   }
+  eskiVideoTrack?.stop();
+
+  if (eskiSesTrack && oda) {
+    await oda.localParticipant.unpublishTrack(eskiSesTrack).catch(() => {});
+  }
+  eskiSesTrack?.stop();
 
   elBtnEkranPaylas.classList.remove('aktif-kapali');
+  if (!eskiVideoTrack && !eskiSesTrack) return;
+
   document.getElementById('sesYayinBitti').play().catch(() => {});
 }
 elBtnKaynakIptal.addEventListener('click', () => elModal.classList.add('gizli'));
@@ -997,8 +1034,13 @@ elSohbetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sohbet
 function sohbetMesajiEkle(yazar, metin, benMi) {
   const div = document.createElement('div');
   div.className = 'sohbet-mesaj';
-  div.innerHTML = `<div class="yazar">${yazar}${benMi ? ' (sen)' : ''}</div><div class="metin"></div>`;
-  div.querySelector('.metin').textContent = metin; // XSS'e karsi guvenli metin atama
+  const yazarEl = document.createElement('div');
+  yazarEl.className = 'yazar';
+  yazarEl.textContent = `${yazar}${benMi ? ' (sen)' : ''}`;
+  const metinEl = document.createElement('div');
+  metinEl.className = 'metin';
+  metinEl.textContent = metin;
+  div.append(yazarEl, metinEl);
   elSohbetMesajlari.appendChild(div);
   elSohbetMesajlari.scrollTop = elSohbetMesajlari.scrollHeight;
 }
