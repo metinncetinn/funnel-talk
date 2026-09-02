@@ -69,7 +69,12 @@ const TRANSLATIONS = {
     sen: '(sen)',
     izliyor: 'izliyor',
     yayinAcik: '🖥️ Yayın açık',
-    yayinVarIzle: '🖥️ Yayın var · izle'
+    yayinVarIzle: '🖥️ Yayın var · izle',
+    bağlantıDurumu: '🟡 Bağlanıyor...',
+    baglıDurum: '🟢 Bağlı',
+    baglantıKesildi: '🔴 Bağlantı Kesildi',
+    yenidenbağlanılıyor: '🟠 Yeniden Bağlanılıyor...',
+    afkDurumu: '😴 AFK'
   },
   en: {
     girisAdLabel: 'Your Name',

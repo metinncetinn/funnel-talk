@@ -321,6 +321,18 @@ body {
 }
 .buton-tam-ekran:hover { background: rgba(0,0,0,0.75); }
 
+.bağlantı-durumu {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  display: inline-block;
+  margin-right: 12px;
+  transition: all 300ms ease;
+}
+
 .yayin-ses-kontrol {
   position: absolute;
   bottom: 16px;

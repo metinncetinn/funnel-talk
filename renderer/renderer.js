@@ -96,6 +96,49 @@ function paylasilanContextKapat() {
 }
 const sesElementleri = new Map();
 
+// ======== BATCH 1: CRITICAL FEATURES ========
+let bağlantıDurumu = 'bağlanıyor'; // 'bağlı', 'bağlanıyor', 'kesildi', 'yeniden bağlanılıyor'
+let otomatikBağlantıDenemesi = 0;
+const MAX_BAĞLANTI_DENEMESI = 5;
+let bağlantıTimeoutId = null;
+let sonSesAktivitesi = Date.now();
+let afkDurumu = false;
+let afkTimeoutId = null;
+const AFK_TIMEOUT = 5 * 60 * 1000;
+let screenShareAudioTracks = new Map();
+
+function başlantıDurumuGüncelle(durum) {
+  bağlantıDurumu = durum;
+  const elDurum = document.getElementById('bağlantıDurumu');
+  if (!elDurum) return;
+  const durumlar = {
+    'bağlı': { text: '🟢 Bağlı', color: '#4ade80' },
+    'bağlanıyor': { text: '🟡 Bağlanıyor...', color: '#fbbf24' },
+    'kesildi': { text: '🔴 Bağlantı Kesildi', color: '#ef4444' },
+    'yeniden bağlanılıyor': { text: '🟠 Yeniden Bağlanılıyor...', color: '#f97316' }
+  };
+  const info = durumlar[durum] || durumlar['kesildi'];
+  elDurum.textContent = info.text;
+  elDurum.style.color = info.color;
+}
+
+function afkKontrolünüBaşlat() {
+  if (afkTimeoutId) clearInterval(afkTimeoutId);
+  sonSesAktivitesi = Date.now();
+  afkTimeoutId = setInterval(() => {
+    if (!room || !mevcutKullanici) return;
+    const şimdi = Date.now();
+    const yeniAfk = (şimdi - sonSesAktivitesi) > AFK_TIMEOUT;
+    if (yeniAfk !== afkDurumu) { afkDurumu = yeniAfk; katilimcilariYenidenCiz(); }
+  }, 15000);
+}
+
+function afkKontrolünüDur() {
+  if (afkTimeoutId) clearInterval(afkTimeoutId);
+  afkTimeoutId = null;
+  afkDurumu = false;
+}
+
 elYayinSesKaydirici.addEventListener('input', async () => {
   if (!izlenenYayinKimlik) return;
   const seviye = Number(elYayinSesKaydirici.value);
