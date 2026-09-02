@@ -118,47 +118,152 @@ Future updates are downloaded automatically in the background; no reinstallation
 
 ---
 
-## 🛠️ Setup (Development / Self-Hosting)
+## 🛠️ Setup (Self-Hosting)
 
-This section is for anyone who wants to stand up the whole stack from scratch.
+This section is for anyone who wants to host their own token server so friends can connect to your instance. Setup takes ~20–30 minutes and requires no special technical knowledge.
 
 ### Prerequisites
 
-- Node.js 18+
-- A [LiveKit Cloud](https://cloud.livekit.io) account (free tier is sufficient)
-- A server that can stay online 24/7 (a Raspberry Pi or similar) or a cloud alternative
-- A GitHub account (for auto-updates)
+- **Node.js 18+** — Download from [nodejs.org](https://nodejs.org/en)
+- **A machine running 24/7**:
+  - Old/spare desktop (Windows/Mac/Linux)
+  - Raspberry Pi 4+ (recommended, low power ~€100)
+  - VPS/cloud server (Hetzner, AWS EC2, ~€5–10/month)
+- **GitHub account** (optional, for auto-updates)
 
-### 1. LiveKit Cloud Setup
+### Quick Start (5 Minutes)
 
-1. Create a project at [cloud.livekit.io](https://cloud.livekit.io).
-2. Note down your **API Key**, **API Secret**, and **WebSocket URL**.
+If you have a Raspberry Pi or Linux server:
 
-### 2. Token Server
+1. Copy `server.js` to the server
+2. Create `.env` file (see below)
+3. Open terminal in the server folder:
+   ```bash
+   npm install express multer livekit-server-sdk dotenv
+   node server.js
+   ```
+4. Open Tailscale Funnel: `tailscale funnel --bg 3001`
+5. Copy the URL to `renderer/config.js`
+6. Build Electron app: `npm run build`
+7. Send the installer to friends
 
-```bash
-git clone <this-repo>
-The token server runs separately from this client repository. In the server project, run `npm install` and create the `.env` file.
-cp .env.example .env
-```
+### Detailed Setup (Step-by-Step)
 
-Fill in `.env`:
+#### Step 1: Create a LiveKit Cloud Account
 
+1. Visit [cloud.livekit.io](https://cloud.livekit.io)
+2. Sign up with your email (free)
+3. Go to **Keys** in the left menu
+4. Save these 3 values:
+   - **API Key**: `APxxxxxxxxxxxx`
+   - **API Secret**: `xxxxxxxxxxxxxxxxxxxxxx`
+   - **URL**: `wss://proj-xxxxx.livekit.cloud`
+
+#### Step 2: Set Up the Token Server
+
+Create a new folder on your computer, e.g., `funnel-talk-server`
+
+Inside this folder, create these 3 files:
+
+**File 1: `.env`**
 ```env
-LIVEKIT_API_KEY=xxxxx
-LIVEKIT_API_SECRET=xxxxx
-LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=paste_your_API_KEY_from_step1
+LIVEKIT_API_SECRET=paste_your_API_SECRET_from_step1
+LIVEKIT_URL=paste_your_URL_from_step1
 PORT=3001
+HOST=0.0.0.0
+ADMIN_USERS=admin
 ```
 
-Test it:
+**File 2: `package.json`**
+```json
+{
+  "name": "funnel-talk-server",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5",
+    "livekit-server-sdk": "^0.6.0",
+    "dotenv": "^16.0.0"
+  }
+}
+```
+
+**File 3: `server.js`**
+
+Copy the `server.js` file from this repository into this folder.
+
+#### Step 3: Install Dependencies
+
+Open a terminal:
+```bash
+cd funnel-talk-server  # enter the folder
+npm install
+```
+
+#### Step 4: Test the Server
 
 ```bash
 npm start
 ```
 
-**Running it persistently (Linux / Raspberry Pi, via systemd):**
+You should see:
+```
+Funnel Talk server 0.0.0.0:3001
+```
 
+Press `Ctrl+C` to stop.
+
+#### Step 5: Expose to the Internet (Tailscale Funnel)
+
+Sign up at [tailscale.com](https://tailscale.com), download and install the app.
+
+In your terminal:
+```bash
+tailscale funnel --bg 3001
+```
+
+You'll see a URL like:
+```
+https://my-computer-name.tail123456.ts.net
+```
+
+**Save this URL** — your friends will use it.
+
+#### Step 6: Configure the Electron App
+
+Open `renderer/config.js`, update this line:
+
+```js
+TOKEN_SERVER_URL: 'https://my-computer-name.tail123456.ts.net',  // ← Your URL from Step 5
+```
+
+#### Step 7: Build and Share
+
+In the project folder (not the server folder):
+```bash
+npm install
+npm run build
+```
+
+Find `Funnel-Talk-Setup-X.X.X.exe` in the `dist/` folder. Send this to your friends — they can download, install, and use it.
+
+#### Step 8: Run the Server Permanently (Optional)
+
+So the server starts even if the computer restarts:
+
+**Windows (Task Scheduler):**
+1. Press `Win` → type "Task Scheduler" → open it
+2. Right side → "Create Basic Task"
+3. Give it a name (e.g., "Funnel Talk Server")
+4. Trigger: "At startup"
+5. Action: Program = `node.exe`, Arguments = `C:\path\to\server.js`
+6. Click "Create"
+
+**Raspberry Pi/Linux (systemd):**
 ```bash
 sudo cp sesli-oda-token.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -166,73 +271,20 @@ sudo systemctl enable sesli-oda-token
 sudo systemctl start sesli-oda-token
 ```
 
-**Exposing it externally (via Tailscale Funnel, recommended):**
+### 💡 Troubleshooting
 
-```bash
-sudo tailscale funnel --bg 3001
-```
+| Problem | Solution |
+|---|---|
+| `PORT 3001 already in use` | Close the other app using port 3001, or change `PORT` in `.env` |
+| Server runs but URL doesn't work | Make sure Tailscale is installed and you ran `tailscale funnel --bg 3001` |
+| App won't start / token error | Double-check `config.js` has the correct URL |
+| Friends can't connect | Verify the `.env` values are correct; restart the server if needed |
 
-This gives you a public HTTPS address like `https://your-device.tailxxxx.ts.net` — your friends don't need to install Tailscale.
+### 📋 Alternative Hosting
 
-### 3. Configuring the Electron Client
-
-`renderer/config.js`:
-
-```js
-window.APP_CONFIG = {
-  TOKEN_SERVER_URL: 'https://your-device.tailxxxx.ts.net',
-  CHANNELS: [
-    { name: 'General', type: 'voice' },
-    { name: 'Gaming', type: 'voice' },
-    { name: 'Text Chat', type: 'text' }
-  ]
-};
-```
-
-### 4. Building
-
-```bash
-npm install
-npm run build
-```
-
-The installer will be generated under `dist/`.
-
-### 5. Auto-Updates (optional but recommended)
-
-Fill in the `build.publish` field in `package.json`:
-
-```json
-"publish": {
-  "provider": "github",
-  "owner": "your-username",
-  "repo": "your-repo-name",
-  "draft": false
-}
-```
-
-Create a [GitHub Personal Access Token](https://github.com/settings/tokens) (with `repo` scope) to publish:
-
-```bash
-$env:GH_TOKEN="ghp_xxxxxxxxxxxx"
-npm run release
-```
-
-This command builds the app and uploads it directly to GitHub Releases. Installed clients detect the new release in the background and self-update.
-
-### 6. Google Sign-In (optional)
-
-1. Create a project in [Google Cloud Console](https://console.cloud.google.com).
-2. Configure the OAuth consent screen as "External".
-3. Create an OAuth Client ID of type **Desktop app**.
-4. Add the Client ID/Secret at the top of `main.js`:
-
-```js
-const GOOGLE_CLIENT_ID = 'xxxxx';
-const GOOGLE_CLIENT_SECRET = 'xxxxx';
-```
-
-Leaving these blank automatically hides the Google sign-in button.
+- **VPS (Hetzner, Linode)**: SSH in, install Node.js + server, runs 24/7
+- **Docker**: Write a `Dockerfile`, run `docker run` (advanced)
+- **AWS Lambda / Vercel**: Serverless hosting (easier but pricier)
 
 ---
 
@@ -270,17 +322,30 @@ Customizable from Settings → Shortcuts. These shortcuts work globally, even wh
 
 - Only one person's screen share is shown in the main viewing area at a time.
 - Screen sharing can include system audio when the operating system and selected source allow it.
-- Text chat is ephemeral (message history clears on leaving/switching channels).
 - Currently packaged for Windows only.
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] Persistent chat history
+Completed:
+- [x] Voice channels, screen sharing and viewing
+- [x] Soundboard audio panel
+- [x] Per-channel text chat
+- [x] Persistent chat history stored on server
+- [x] Clickable URLs in chat messages
+- [x] Chat file/photo/video attachments (100MB limit)
+- [x] Image/video attachment modal preview
+- [x] File download support
+- [x] Admin/author message deletion (with file cleanup)
+- [x] Token server + LiveKit access token generation
+- [x] Load message history when switching channels
+
+Planned features:
 - [ ] Support for watching multiple simultaneous streams
 - [ ] Shared music playback via YouTube/link bot
 - [ ] macOS/Linux packaging support
+- [ ] Message search and filtering
 
 ---
 

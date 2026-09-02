@@ -118,54 +118,151 @@ Sonraki güncellemeler otomatik olarak arka planda indirilir; yeniden kurulum ge
 
 ---
 
-## 🛠️ Kurulum (Geliştirme / Kendi Sunucunuzu Barındırma)
+## 🛠️ Kurulum (Kendi Sunucunuzu Barındırma)
 
-Bu bölüm, projeyi sıfırdan ayağa kaldırmak isteyenler içindir.
+Bu bölüm, Funnel Talk'ı arkadaş grubuyla paylaşmak için **token sunucusunu kendi bilgisayarda kurmak** isteyenler içindir. Kurulum ~20-30 dakika sürer, teknik bilgi gerekmez.
 
 ### Ön Koşullar
 
-- Node.js 18+
-- Bir [LiveKit Cloud](https://cloud.livekit.io) hesabı (ücretsiz katman yeterli)
-- 7/24 açık kalabilecek bir sunucu (Raspberry Pi veya benzeri) veya bulut tabanlı bir alternatif
-- GitHub hesabı (otomatik güncelleme için)
+- **Node.js 18+** — [nodejs.org](https://nodejs.org/en) adresinden indirin
+- **7/24 çalışan bir cihaz**:
+  - Eski/atık bir bilgisayar (Windows/Mac/Linux)
+  - Raspberry Pi 4+ (önerilir, az enerji tüketir, ~$100)
+  - VPS/bulut sunucu (Hetzner, AWS EC2 gibi, aylık ~€5-10)
+- **GitHub hesabı** (isteğe bağlı, otomatik güncelleme için)
 
-### 1. LiveKit Cloud Kurulumu
+### Hızlı Kurulum (5 Dakika)
 
-1. [cloud.livekit.io](https://cloud.livekit.io) üzerinde bir proje oluşturun.
-2. **API Key**, **API Secret** ve **WebSocket URL**'i not edin.
+Eğer Raspberry Pi veya Linux sunucusu varsa:
 
-### 2. Token Sunucusu
+1. `server.js` dosyasını sunucuya kopyala
+2. `.env` dosyasını oluştur (aşağıya bak)
+3. Terminal aç, sunucu klasörüne git:
+   ```bash
+   npm install express multer livekit-server-sdk dotenv
+   node server.js
+   ```
+4. Tailscale Funnel aç: `tailscale funnel --bg 3001`
+5. Çıkan URL'i `renderer/config.js` içine yapıştır
+6. Electron projesini derle: `npm run build`
+7. Kurulum dosyasını arkadaşlara gönder
 
-Aşağıdaki dosyalar sunucu klasörüne konulmalıdır:
+### Detaylı Kurulum (Baştan Başlayanlar için)
 
-- `server.js`
-- `.env`
-- `package.json`
-- `sesli-oda-token.service`
+#### 1. LiveKit Cloud Hesabı Aç
 
-Kurulum:
+1. [cloud.livekit.io](https://cloud.livekit.io) ziyaret et
+2. Sign up → e-posta ver, hesap oluştur (ücretsiz)
+3. Sol menüde **Keys** bölümü aç
+4. Aşağıdaki 3 değeri not et:
+   - **API Key**: `APxxxxxxxxxxxx`
+   - **API Secret**: `xxxxxxxxxxxxxxxxxxxxxx`
+   - **URL**: `wss://proj-xxxxx.livekit.cloud`
 
+#### 2. Token Sunucusunu Kur
+
+Bilgisayarında yeni bir klasör oluştur, örn: `funnel-talk-server`
+
+Bu klasöre aşağıdaki 3 dosyayı koy:
+
+**Dosya 1: `.env`**
+```env
+LIVEKIT_API_KEY=Adım1'den_kopyaladığın_API_KEY
+LIVEKIT_API_SECRET=Adım1'den_kopyaladığın_API_SECRET
+LIVEKIT_URL=Adım1'den_kopyaladığın_URL
+PORT=3001
+HOST=0.0.0.0
+ADMIN_USERS=admin
+```
+
+**Dosya 2: `package.json`**
+```json
+{
+  "name": "funnel-talk-server",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5",
+    "livekit-server-sdk": "^0.6.0",
+    "dotenv": "^16.0.0"
+  }
+}
+```
+
+**Dosya 3: `server.js`**
+
+Bu depo içindeki `server.js` dosyasını kopyala (okunuyor dosya)
+
+#### 3. Bağımlılıkları Kur
+
+Terminal/PowerShell aç:
 ```bash
+cd funnel-talk-server  # klasöre gir
 npm install
 ```
 
-`.env` dosyasını doldurun:
-
-```env
-LIVEKIT_API_KEY=xxxxx
-LIVEKIT_API_SECRET=xxxxx
-LIVEKIT_URL=wss://sizin-projeniz.livekit.cloud
-PORT=3001
-```
-
-Test edin:
+#### 4. Test Et
 
 ```bash
 npm start
 ```
 
-**Kalıcı çalıştırma (Linux / Raspberry Pi, systemd ile):**
+Şu yazı çıkarsa başarılı:
+```
+Funnel Talk server 0.0.0.0:3001
+```
 
+`Ctrl+C` ile kapat.
+
+#### 5. İnternete Aç (Tailscale Funnel)
+
+[tailscale.com](https://tailscale.com) adresinden kayıt ol, uygulamayı indir ve kur.
+
+Terminal'de:
+```bash
+tailscale funnel --bg 3001
+```
+
+Şu gibi bir URL görürsün:
+```
+https://bilgisayar-adin.tail123456.ts.net
+```
+
+Bu URL'yi **not et** (arkadaşlarınız bunu kullanacak).
+
+#### 6. Electron Uygulamasını Ayarla
+
+Bu depo içinde `renderer/config.js` dosyasını aç, şu satırı değiştir:
+
+```js
+TOKEN_SERVER_URL: 'https://bilgisayar-adin.tail123456.ts.net',  // ← Adım 5'teki URL
+```
+
+#### 7. Derle ve Gönder
+
+Proje klasöründe (sunucu değil):
+```bash
+npm install
+npm run build
+```
+
+`dist/` klasöründe `Funnel-Talk-Setup-X.X.X.exe` dosyası oluşur. Arkadaşlarına gönder, onlar kurup uygulamayı açabilir.
+
+#### 8. Kalıcı Çalıştırma (İsteğe Bağlı)
+
+Sunucu bilgisayar kapanınca açılsın diye:
+
+**Windows (Task Scheduler):**
+1. Başlat → "Task Scheduler" aç
+2. Sağ taraf → "Create Basic Task"
+3. "Trigger" → "At startup"
+4. "Action" → Program: `node.exe`, Arguments: `C:\path\to\server.js`
+5. "Create"
+
+**Raspberry Pi/Linux (systemd):**
 ```bash
 sudo cp sesli-oda-token.service /etc/systemd/system/
 sudo systemctl daemon-reload
@@ -173,79 +270,20 @@ sudo systemctl enable sesli-oda-token
 sudo systemctl start sesli-oda-token
 ```
 
-**Dışarıya açma (Tailscale Funnel ile, önerilir):**
+### 💡 Sorun Giderme
 
-```bash
-sudo tailscale funnel --bg 3001
-```
+| Sorun | Çözüm |
+|---|---|
+| `PORT 3001 already in use` | Başka bir uygulamayı port'tan çıkart veya `.env`'de PORT'u değiştir |
+| Sunucu çalışıyor ama URL'ye girilemiyorum | Tailscale'in yüklü olup `funnel` çalıştırıldığından emin ol |
+| İstemci başlatılamıyor / token hatası | `config.js`'deki URL'nin doğru olup olmadığını kontrol et |
+| Arkadaş bağlanemiyor | Arkadaş tarafından `.env`'deki değerleri `.env`'de değiştir veya server'ı yeniden başlat |
 
-Bu size `https://cihaz-adiniz.tailxxxx.ts.net` gibi herkese açık bir HTTPS adresi verir — arkadaşlarınızın Tailscale kurmasına gerek kalmaz.
+### 📋 Alternative Hosting
 
-### 3. Electron İstemcisini Yapılandırma
-
-`renderer/config.js`:
-
-```js
-window.APP_CONFIG = {
-  TOKEN_SERVER_URL: 'https://cihaz-adiniz.tailxxxx.ts.net',
-  MAX_CHAT_ATTACHMENT_MB: 100,
-  ADMIN_USERS: ['admin', 'metin'],
-  CHANNELS: [
-    { name: 'Genel', type: 'voice' },
-    { name: 'Oyun', type: 'voice' },
-    { name: 'Sohbet', type: 'text' }
-  ]
-};
-```
-
-Bu ayarlarda:
-- `MAX_CHAT_ATTACHMENT_MB` — sohbet eklerinin maksimum boyutunu belirler.
-- `ADMIN_USERS` — mesaj silme yetkisi olan kullanıcı adları.
-
-### 4. Derleme
-
-```bash
-npm install
-npm run build
-```
-
-Kurulum dosyası `dist/` klasöründe oluşur.
-
-### 5. Otomatik Güncelleme (isteğe bağlı ama önerilir)
-
-`package.json` içindeki `build.publish` alanını doldurun:
-
-```json
-"publish": {
-  "provider": "github",
-  "owner": "kullanici-adiniz",
-  "repo": "repo-adiniz",
-  "draft": false
-}
-```
-
-Yayınlamak için bir [GitHub Personal Access Token](https://github.com/settings/tokens) (`repo` yetkisiyle) oluşturun:
-
-```bash
-$env:GH_TOKEN="ghp_xxxxxxxxxxxx"
-npm run release
-```
-
-Bu komut hem derler hem doğrudan GitHub Releases'e yükler. Kurulu istemciler bunu arka planda algılayıp kendini günceller.
-
-### 6. Google ile Giriş (isteğe bağlı)
-
-1. [Google Cloud Console](https://console.cloud.google.com)'da bir proje oluşturun.
-2. OAuth consent screen'i "External" olarak yapılandırın.
-3. **Desktop app** türünde bir OAuth Client ID oluşturun.
-4. `main.js` dosyasının en üstüne Client ID/Secret'i girin:
-
-```js
-const GOOGLE_CLIENT_ID = 'xxxxx';
-const GOOGLE_CLIENT_SECRET = 'xxxxx';
-```
-
-Boş bırakılırsa Google ile giriş butonu otomatik gizlenir.
+- **VPS (Hetzner, Linode)**: SSH ile bağlan, Node.js + server kur, daima açık
+- **Docker**: `Dockerfile` yazıp `docker run` ile çalıştır (ileri seviye)
+- **AWS Lambda** veya **Vercel**: Serverless (sunucu yönetimi yok ama biraz pahalı)
 
 ---
 
@@ -283,7 +321,6 @@ Ayarlar → Kısayollar sekmesinden özelleştirilebilir. Bu kısayollar uygulam
 
 - Aynı anda yalnızca bir kişinin ekran paylaşımı ana alanda gösterilir.
 - Ekran paylaşımı, işletim sistemi ve seçilen kaynağın izin verdiği durumlarda sistem sesini de paylaşır.
-- Metin sohbeti geçicidir (kanaldan ayrılınca/değiştirilince mesaj geçmişi silinir).
 - Uygulama şu an yalnızca Windows için paketlenmektedir.
 
 ---
@@ -294,16 +331,20 @@ Tamamlananlar:
 - [x] Sesli kanallar, ekran paylaşımı ve izleme
 - [x] Soundboard ses paneli
 - [x] Kanal bazlı metin sohbeti
+- [x] Sohbet geçmişinin kalıcı olarak sunucuda saklanması
 - [x] Sohbette URL tıklanabilir link desteği
 - [x] Sohbet dosya/fotoğraf/video ekleme (100MB sınırı)
-- [x] Admin tarafından mesaj silme yetkisi
+- [x] Resim/video eklerin modal önizlemesi
+- [x] Dosya indirme desteği
+- [x] Admin tarafından mesaj silme yetkisi (dosya dahil temizleme)
 - [x] Token sunucusu + LiveKit erişim jetonu üretimi
+- [x] Kanal değişildiğinde mesaj geçmişi yükleme
 
 Gelecek hedefler:
-- [ ] Sohbet geçmişinin kalıcı olarak saklanması
 - [ ] Çoklu eş zamanlı yayın izleme desteği
 - [ ] YouTube/müzik linki paylaşımı ile ortak dinleme botu
 - [ ] macOS/Linux paketleme desteği
+- [ ] Mesaj arama ve filtreleme
 
 ---
 
