@@ -431,6 +431,29 @@ body {
 .bildirim-uyarı { border-left: 4px solid #fbbf24; }
 .bildirim-bilgi { border-left: 4px solid #3b82f6; }
 
+.ayarlar-butonlari {
+  display: flex;
+  gap: 8px;
+}
+.ayarlar-butonlari button {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  background: var(--vurgu);
+  color: white;
+  cursor: pointer;
+  transition: all 200ms;
+}
+.ayarlar-butonlari button:hover {
+  background: var(--vurgu-koyu);
+  transform: translateY(-1px);
+}
+.ayarlar-butonlari button:active {
+  transform: translateY(0);
+}
+
 .kanal-favorisi {
   position: relative;
 }

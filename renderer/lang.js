@@ -91,6 +91,12 @@ const TRANSLATIONS = {
     kişiAyrıldı: '{kişi} left',
     muteEdilemedi: 'Failed to mute',
     favoriBaşarı: 'Added to favorites',
+    tokenGeçersiz: '⚠️ Token expired',
+    kaliteOptimizasyonu: 'Quality auto-optimized',
+    ayarlarıDışaAktar: '📥 Export Settings',
+    ayarlarıİçeAktar: '📤 Import Settings',
+    bellekTemizleme: 'Cleaning memory...',
+    idleModAktif: 'Idle mode - bandwidth optimized',
     sesLevel: '🎤 Ses Seviyesi',
     kişi: 'kişi',
     çevrimiçi: 'Çevrimiçi',
@@ -106,7 +112,13 @@ const TRANSLATIONS = {
     kişiKatıldı: '{kişi} kanala katıldı',
     kişiAyrıldı: '{kişi} kanaldan ayrıldı',
     muteEdilemedi: 'Sessiz etme başarısız',
-    favoriBaşarı: 'Favorilere eklendi'
+    favoriBaşarı: 'Favorilere eklendi',
+    tokenGeçersiz: '⚠️ Token süresi doldu',
+    kaliteOptimizasyonu: 'Kalite otomatik optimize edildi',
+    ayarlarıDışaAktar: '📥 Ayarları İndir',
+    ayarlarıİçeAktar: '📤 Ayarları Yükle',
+    bellekTemizleme: 'Bellek temizleniyor...',
+    idleModAktif: 'Idle mod - bant genişliği optimize edildi'
   },
   en: {
     girisAdLabel: 'Your Name',
