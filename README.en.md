@@ -4,6 +4,10 @@
 
 A lightweight, self-hosted voice/video chat application for friend groups. Brings Discord's core features (voice channels, screen sharing, soundboard, text chat) to a small friend group on infrastructure you fully control.
 
+## 🤔 Why This Project?
+
+Due to access restrictions on Discord in Turkey, I created Funnel Talk to provide my friend group with a reliable communication and gaming environment. Existing voice chat applications each fell short in different ways and didn't fully meet our specific needs. By building a lightweight, fully-controlled alternative, we can stay connected securely while gaming and organizing social events all on a single platform.
+
 <p align="center">
   <img src="assets/funnel-talk-login.png" width="32%">
   <img src="assets/funnel-talk-main.png" width="32%">
@@ -39,9 +43,16 @@ A lightweight, self-hosted voice/video chat application for friend groups. Bring
 - Playing a sound is only heard by your current channel
 - Easy uploads (max 5 seconds, named/emoji-tagged)
 
-**Text Chat**
-- Real-time per-channel messaging
+**Text Chat & File Sharing**
+- Real-time per-channel messaging; all messages persist on the server
 - Dedicated text-only channel support
+- File, photo, and video sharing (100MB limit per file)
+- Shared media (photos/videos) display as previews within the chat
+- Click on an image or video to open it in a modal window; close with the X button
+- All files are downloadable via Save-As dialog
+- When a message is deleted, its attached file is permanently removed from the server
+- Message authors and admins can delete messages
+- Previous messages in a channel auto-load when you switch channels
 
 **Personalization**
 - 4 themes (Dark, Light, Midnight Blue, Purple)

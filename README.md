@@ -4,6 +4,10 @@
 
 Arkadaş grupları için hafif, kendi kendine barındırılan (self-hosted) sesli/görüntülü sohbet uygulaması. Discord'un temel özelliklerini (sesli kanallar, ekran paylaşımı, soundboard, metin sohbeti) küçük bir arkadaş grubu için basit ve tamamen kontrol edilebilir bir altyapı üzerinde sunar.
 
+## 🤔 Neden Bu Proje?
+
+Türkiye'de Discord'un erişim kısıtlamalarından dolayı, arkadaş grubuyla sağlıklı iletişim ve oyun ortamı oluşturmak amacıyla bu projeyi başlattım. Mevcut sesli iletişim uygulamalarının her biri birer açıdan eksik olup, özel ihtiyaçlarımızı tam olarak karşılamadığında, tamamen kendi kontrol ettiğimiz, hafif ve esnek bir çözüm geliştirme fikri doğdu. Böylece sadece arkadaş grubuyla güvenli bir şekilde iletişim kurmakla kalmadık, aynı zamanda oyun oynamak ve sosyal etkinlikler düzenlemek için tek bir platform oluşturabildik.
+
 <p align="center">
   <img src="assets/funnel-talk-login.png" width="32%">
   <img src="assets/funnel-talk-main.png" width="32%">
@@ -39,12 +43,16 @@ Arkadaş grupları için hafif, kendi kendine barındırılan (self-hosted) sesl
 - Sese basınca yalnızca bulunduğun kanal duyar
 - Kolay ses ekleme (maks. 5 saniye, isimli/emoji etiketli)
 
-**Metin Sohbeti**
-- Kanal bazlı gerçek zamanlı yazışma
+**Metin Sohbeti & Dosya Paylaşımı**
+- Kanal bazlı gerçek zamanlı yazışma, tüm mesajlar sunucuda kalıcı olarak saklanır
 - Ayrı metin-only kanal desteği
 - Dosya, fotoğraf ve video paylaşımı (100MB sınırı)
-- Paylaşılan ekler, mesaj silinene kadar erişilebilir kalır
-- Admin kullanıcılara mesaj silme yetkisi
+- Paylaşılan ekler (resim/video) sohbet içinde önizleme olarak gösterilir
+- Klip veya dosyaya tıklayınca modal penceresinde açılır, X butonuyla kapatılabilir
+- Tüm dosyalar indirilebilir (Save-As diyaloğu ile)
+- Mesaj silinince bağlı dosya da sunucudan fiziksel olarak kaldırılır
+- Admin ve mesaj yazarı mesaj silebilir
+- Kanal değişildiğinde önceki mesajlar otomatik yüklenir
 
 **Kişiselleştirme**
 - 4 tema (Koyu, Açık, Gece Mavisi, Mor)
