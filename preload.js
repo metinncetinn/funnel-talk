@@ -14,5 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSesTercihleri: () => ipcRenderer.invoke('get-ses-tercihleri'),
   saveSesTercihleri: (tercihler) => ipcRenderer.invoke('save-ses-tercihleri', tercihler),
   onGuncellemeHazir: (callback) => ipcRenderer.on('guncelleme-hazir', (_e, bilgi) => callback(bilgi)),
-  installUpdate: () => ipcRenderer.invoke('install-update')
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  openExternal: (url) => ipcRenderer.send('open-external-link', url)
 });

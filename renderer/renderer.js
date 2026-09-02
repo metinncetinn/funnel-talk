@@ -45,6 +45,8 @@ const elSohbetPaneli = document.getElementById('sohbetPaneli');
 const elSohbetMesajlari = document.getElementById('sohbetMesajlari');
 const elSohbetInput = document.getElementById('sohbetInput');
 const elBtnSohbetGonder = document.getElementById('btnSohbetGonder');
+const elBtnChatEk = document.getElementById('btnChatEk');
+const elChatFileInput = document.getElementById('chatFileInput');
 const elModal = document.getElementById('kaynakSecimModal');
 const elKaynakListesi = document.getElementById('kaynakListesi');
 const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
@@ -728,6 +730,7 @@ function baglaOlayDinleyicileri() {
   room.on(RoomEvent.DataReceived, (payload) => {
     try {
       const veri = JSON.parse(new TextDecoder().decode(payload));
+
       if (veri.tip === 'izleme-durumu') {
         if (!izleyenler.has(veri.hedefKimlik)) izleyenler.set(veri.hedefKimlik, new Set());
         const set = izleyenler.get(veri.hedefKimlik);
@@ -736,15 +739,21 @@ function baglaOlayDinleyicileri() {
         if (veri.izliyor) set.add(veri.izleyenAd);
         else set.delete(veri.izleyenAd);
 
-        // Yayının sahibi bensem ve biri yeni izlemeye başladıysa bildirim sesi çal
         if (yeniIzleyiciMi && veri.hedefKimlik === cihazKimligim) {
           document.getElementById('sesYayinIzleyici').play().catch(() => {});
         }
 
         katilimcilariYenidenCiz();
-      } else {
-        sohbetMesajiEkle(veri.yazar, veri.metin, false);
+        return;
       }
+
+      if (veri.tip === 'chat-delete') {
+        if (veri.id) silSohbetMesaji(veri.id);
+        return;
+      }
+
+      const attachment = veri.attachment || null;
+      sohbetMesajiEkle(veri.yazar, veri.metin || attachment?.filename || '', false, veri);
     } catch (e) {
       console.warn('Veri mesaji cozulemedi', e);
     }
@@ -1204,30 +1213,225 @@ const elBtnKanaldanAyril = document.getElementById('btnKanaldanAyril');
 elBtnKanaldanAyril.addEventListener('click', () => {
   if (room) room.disconnect();
 });
+
+function sohbetMesajIdUret() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+  return `msg-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function kullaniciAdminMi(ad) {
+  const isim = String(ad || '').trim().toLowerCase();
+  if (!isim) return false;
+  const admins = Array.isArray(window.APP_CONFIG?.ADMIN_USERS) ? window.APP_CONFIG.ADMIN_USERS : [];
+  return admins.some((g) => String(g).trim().toLowerCase() === isim);
+}
+
+function sohbetMesajiYayinla(payload) {
+  if (!room || !payload) return;
+  room.localParticipant.publishData(
+    new TextEncoder().encode(JSON.stringify(payload)),
+    { reliable: true }
+  );
+}
+
+function silSohbetMesaji(messageId) {
+  if (!messageId) return;
+  const mesajEl = elSohbetMesajlari.querySelector(`[data-message-id="${CSS.escape(String(messageId))}"]`);
+  mesajEl?.remove();
+}
+
 function sohbetGonder() {
   const metin = elSohbetInput.value.trim();
   if (!metin || !room) return;
-  const mesaj = { yazar: mevcutKullanici.name, metin };
-  room.localParticipant.publishData(
-    new TextEncoder().encode(JSON.stringify(mesaj)),
-    { reliable: true }
-  );
-  sohbetMesajiEkle(mevcutKullanici.name, metin, true);
+  const payload = { tip: 'chat-message', id: sohbetMesajIdUret(), yazar: mevcutKullanici.name, metin, zaman: Date.now() };
+  sohbetMesajiYayinla(payload);
+  sohbetMesajiEkle(mevcutKullanici.name, metin, true, payload);
   elSohbetInput.value = '';
 }
+
+async function chatDosyaGonder() {
+  const dosya = elChatFileInput.files && elChatFileInput.files[0];
+  if (!dosya || !room) return;
+
+  const limitBytes = (window.APP_CONFIG?.MAX_CHAT_ATTACHMENT_MB || 100) * 1024 * 1024;
+  if (dosya.size > limitBytes) {
+    alert(t('dosyaCokBuyuk'));
+    elChatFileInput.value = '';
+    return;
+  }
+
+  const form = new FormData();
+  form.append('file', dosya);
+  form.append('uploader', mevcutKullanici?.name || 'unknown');
+  form.append('channel', aktifKanal?.name || 'general');
+
+  try {
+    const response = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/chat-attachments/upload`, {
+      method: 'POST',
+      body: form
+    });
+
+    if (!response.ok) {
+      throw new Error('Upload failed');
+    }
+
+    const sonuc = await response.json();
+    const attachment = {
+      id: sonuc.id || sohbetMesajIdUret(),
+      url: sonuc.url,
+      filename: sonuc.filename || dosya.name,
+      mimeType: sonuc.mimeType || dosya.type || 'application/octet-stream',
+      size: sonuc.size || dosya.size,
+      isImage: !!(sonuc.mimeType || dosya.type || '').startsWith('image/'),
+      isVideo: !!(sonuc.mimeType || dosya.type || '').startsWith('video/')
+    };
+
+    const payload = {
+      tip: 'chat-attachment',
+      id: attachment.id,
+      yazar: mevcutKullanici.name,
+      metin: attachment.filename,
+      attachment,
+      zaman: Date.now()
+    };
+
+    sohbetMesajiYayinla(payload);
+    sohbetMesajiEkle(mevcutKullanici.name, attachment.filename, true, payload);
+  } catch (error) {
+    console.error('Chat dosya upload hatasi', error);
+    alert(t('dosyaYuklemeHatasi'));
+  } finally {
+    elChatFileInput.value = '';
+  }
+}
+
 elBtnSohbetGonder.addEventListener('click', sohbetGonder);
 elSohbetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sohbetGonder(); });
+elBtnChatEk.addEventListener('click', () => elChatFileInput.click());
+elChatFileInput.addEventListener('change', chatDosyaGonder);
 
-function sohbetMesajiEkle(yazar, metin, benMi) {
+function sohbetMesajIceriginiHazirla(metin) {
+  if (!metin || typeof metin !== 'string') return document.createTextNode('');
+
+  const fragman = document.createDocumentFragment();
+  const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+  let sonIndex = 0;
+
+  for (const eslesme of metin.matchAll(urlRegex)) {
+    const baslangic = eslesme.index ?? 0;
+    const bitis = baslangic + eslesme[0].length;
+
+    if (baslangic > sonIndex) {
+      fragman.appendChild(document.createTextNode(metin.slice(sonIndex, baslangic)));
+    }
+
+    const rawUrl = eslesme[0];
+    const url = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+    const link = document.createElement('a');
+    link.href = url;
+    link.textContent = rawUrl;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.color = '#60a5fa';
+    link.style.textDecoration = 'underline';
+    link.style.cursor = 'pointer';
+    link.style.wordBreak = 'break-word';
+
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      if (window.electronAPI && typeof window.electronAPI.openExternal === 'function') {
+        window.electronAPI.openExternal(url);
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    });
+
+    fragman.appendChild(link);
+    sonIndex = bitis;
+  }
+
+  if (sonIndex < metin.length) {
+    fragman.appendChild(document.createTextNode(metin.slice(sonIndex)));
+  }
+
+  return fragman;
+}
+
+function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
   const div = document.createElement('div');
   div.className = 'sohbet-mesaj';
+  div.dataset.messageId = payload?.id || sohbetMesajIdUret();
+
   const yazarEl = document.createElement('div');
   yazarEl.className = 'yazar';
   yazarEl.textContent = `${yazar}${benMi ? ' (sen)' : ''}`;
+
   const metinEl = document.createElement('div');
   metinEl.className = 'metin';
-  metinEl.textContent = metin;
-  div.append(yazarEl, metinEl);
+
+  const attachment = payload?.attachment;
+  const medyaKapsayici = document.createElement('div');
+  medyaKapsayici.className = 'chat-besleme';
+
+  if (attachment?.url) {
+    const dosyaTipi = attachment.mimeType || '';
+    if (dosyaTipi.startsWith('image/')) {
+      const img = document.createElement('img');
+      img.src = attachment.url;
+      img.alt = attachment.filename || 'image';
+      const wrap = document.createElement('div');
+      wrap.className = 'chat-ek-ortam';
+      wrap.appendChild(img);
+      medyaKapsayici.appendChild(wrap);
+    } else if (dosyaTipi.startsWith('video/')) {
+      const video = document.createElement('video');
+      video.src = attachment.url;
+      video.controls = true;
+      video.preload = 'metadata';
+      const wrap = document.createElement('div');
+      wrap.className = 'chat-ek-ortam';
+      wrap.appendChild(video);
+      medyaKapsayici.appendChild(wrap);
+    }
+
+    const link = document.createElement('a');
+    link.href = attachment.url;
+    link.className = 'chat-ek-link';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = attachment.filename || 'Dosya indir';
+    link.download = attachment.filename || 'dosya';
+    medyaKapsayici.appendChild(link);
+  }
+
+  const metinText = typeof metin === 'string' && metin.trim() && !attachment?.url ? metin : '';
+  if (metinText) {
+    metinEl.appendChild(sohbetMesajIceriginiHazirla(metinText));
+  }
+  if (medyaKapsayici.childNodes.length) {
+    metinEl.appendChild(medyaKapsayici);
+  }
+
+  const silButonu = document.createElement('button');
+  silButonu.type = 'button';
+  silButonu.className = 'chat-sil-btn';
+  silButonu.textContent = t('mesajSil');
+  silButonu.title = t('mesajSil');
+  const isOwnMessage = benMi || (mevcutKullanici && yazar === mevcutKullanici.name);
+  const isAdmin = kullaniciAdminMi(yazar) || kullaniciAdminMi(mevcutKullanici?.name);
+  if (isOwnMessage || isAdmin) {
+    silButonu.addEventListener('click', () => {
+      const targetId = div.dataset.messageId;
+      if (!targetId) return;
+      const payload = { tip: 'chat-delete', id: targetId, yazar: mevcutKullanici?.name || 'admin', zaman: Date.now() };
+      sohbetMesajiYayinla(payload);
+      silSohbetMesaji(targetId);
+    });
+    div.append(yazarEl, metinEl, silButonu);
+  } else {
+    div.append(yazarEl, metinEl);
+  }
+
   elSohbetMesajlari.appendChild(div);
   elSohbetMesajlari.scrollTop = elSohbetMesajlari.scrollHeight;
 }

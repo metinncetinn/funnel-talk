@@ -3,6 +3,8 @@
 // Örnek: https://pi-adin.tail1234.ts.net
 window.APP_CONFIG = {
   TOKEN_SERVER_URL: 'https://metpi.tail5d616d.ts.net',
+  MAX_CHAT_ATTACHMENT_MB: 100,
+  ADMIN_USERS: ['admin'],
 
   // type: 'voice'  -> mikrofon/ekran paylaşımı olan normal kanal
   // type: 'text'   -> sadece yazışma, mikrofon/ekran paylaşımı gizli

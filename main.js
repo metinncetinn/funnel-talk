@@ -125,6 +125,14 @@ ipcMain.handle('install-update', () => {
   return true;
 });
 
+ipcMain.on('open-external-link', (_event, url) => {
+  if (typeof url !== 'string' || !url.trim()) return;
+  const hedefUrl = /^https?:\/\//i.test(url) ? url : `https://${url}`;
+  shell.openExternal(hedefUrl).catch((err) => {
+    console.warn('Harici link açılamadı:', err);
+  });
+});
+
 autoUpdater.autoDownload = true;
 autoUpdater.autoInstallOnAppQuit = true;
 autoUpdater.on('update-downloaded', (info) => {

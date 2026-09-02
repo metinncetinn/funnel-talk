@@ -230,6 +230,15 @@ body {
 .sohbet-mesaj .yazar { font-weight: 600; color: #7f8cff; font-size: 12px; }
 .sohbet-mesaj .metin { color: var(--metin); word-break: break-word; }
 .sohbet-giris { display: flex; border-top: 1px solid var(--kenar); }
+.chat-attach-btn {
+  width: 42px;
+  background: var(--bg-1);
+  border: none;
+  border-right: 1px solid var(--kenar);
+  color: var(--metin);
+  cursor: pointer;
+  font-size: 18px;
+}
 .sohbet-giris input {
   flex: 1;
   padding: 10px;
@@ -243,6 +252,56 @@ body {
   border: none;
   color: #fff;
   cursor: pointer;
+}
+.sohbet-mesaj .metin {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-besleme {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 220px;
+}
+.chat-ek-ortam {
+  width: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--kenar);
+  background: rgba(255,255,255,0.04);
+}
+.chat-ek-ortam img,
+.chat-ek-ortam video {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  background: #000;
+}
+.chat-ek-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #8dbcff;
+  text-decoration: none;
+  word-break: break-word;
+}
+.chat-ek-link:hover { text-decoration: underline; }
+.chat-sil-btn {
+  align-self: flex-end;
+  background: rgba(216, 60, 48, 0.12);
+  border: 1px solid rgba(216, 60, 48, 0.4);
+  color: #ff9d99;
+  border-radius: 6px;
+  padding: 4px 7px;
+  cursor: pointer;
+  font-size: 11px;
 }
 
 /* Modal ortak */

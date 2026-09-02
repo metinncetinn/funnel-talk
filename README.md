@@ -42,6 +42,9 @@ Arkadaş grupları için hafif, kendi kendine barındırılan (self-hosted) sesl
 **Metin Sohbeti**
 - Kanal bazlı gerçek zamanlı yazışma
 - Ayrı metin-only kanal desteği
+- Dosya, fotoğraf ve video paylaşımı (100MB sınırı)
+- Paylaşılan ekler, mesaj silinene kadar erişilebilir kalır
+- Admin kullanıcılara mesaj silme yetkisi
 
 **Kişiselleştirme**
 - 4 tema (Koyu, Açık, Gece Mavisi, Mor)
@@ -77,7 +80,7 @@ Arkadaş grupları için hafif, kendi kendine barındırılan (self-hosted) sesl
 
 - **İstemci (Electron)** — arkadaşların bilgisayarına kurduğu masaüstü uygulaması. Tüm ses işleme (gürültü engelleme, limiter, eşik, ses seviyesi karışımı) istemci tarafında Web Audio API ile yapılır.
 - **LiveKit Cloud** — sesin/görüntünün gerçek taşıyıcısı. WebRTC tabanlı SFU (Selective Forwarding Unit), medya trafiğini yönlendirir.
-- **Token Sunucusu** — küçük bir Node.js/Express servisi, Raspberry Pi üzerinde 7/24 çalışır. Yalnızca kısa ömürlü erişim jetonları üretir ve soundboard dosyalarını barındırır; hiçbir ses/görüntü verisi buradan geçmez.
+- **Token Sunucusu** — küçük bir Node.js/Express servisi, Raspberry Pi üzerinde 7/24 çalışır. Kısa ömürlü erişim jetonları üretir, soundboard dosyalarını ve sohbet eklerini barındırır; hiçbir ses/görüntü verisi buradan geçmez.
 
 ---
 
@@ -125,10 +128,17 @@ Bu bölüm, projeyi sıfırdan ayağa kaldırmak isteyenler içindir.
 
 ### 2. Token Sunucusu
 
+Aşağıdaki dosyalar sunucu klasörüne konulmalıdır:
+
+- `server.js`
+- `.env`
+- `package.json`
+- `sesli-oda-token.service`
+
+Kurulum:
+
 ```bash
-git clone <bu-repo>
-Sunucu projesi bu istemci deposundan ayrı çalıştırılır. Sunucu projesinde `npm install` çalıştırıp `.env` dosyasını oluşturun.
-cp .env.example .env
+npm install
 ```
 
 `.env` dosyasını doldurun:
@@ -170,6 +180,8 @@ Bu size `https://cihaz-adiniz.tailxxxx.ts.net` gibi herkese açık bir HTTPS adr
 ```js
 window.APP_CONFIG = {
   TOKEN_SERVER_URL: 'https://cihaz-adiniz.tailxxxx.ts.net',
+  MAX_CHAT_ATTACHMENT_MB: 100,
+  ADMIN_USERS: ['admin', 'metin'],
   CHANNELS: [
     { name: 'Genel', type: 'voice' },
     { name: 'Oyun', type: 'voice' },
@@ -177,6 +189,10 @@ window.APP_CONFIG = {
   ]
 };
 ```
+
+Bu ayarlarda:
+- `MAX_CHAT_ATTACHMENT_MB` — sohbet eklerinin maksimum boyutunu belirler.
+- `ADMIN_USERS` — mesaj silme yetkisi olan kullanıcı adları.
 
 ### 4. Derleme
 
@@ -266,6 +282,16 @@ Ayarlar → Kısayollar sekmesinden özelleştirilebilir. Bu kısayollar uygulam
 
 ## 🗺️ Yol Haritası
 
+Tamamlananlar:
+- [x] Sesli kanallar, ekran paylaşımı ve izleme
+- [x] Soundboard ses paneli
+- [x] Kanal bazlı metin sohbeti
+- [x] Sohbette URL tıklanabilir link desteği
+- [x] Sohbet dosya/fotoğraf/video ekleme (100MB sınırı)
+- [x] Admin tarafından mesaj silme yetkisi
+- [x] Token sunucusu + LiveKit erişim jetonu üretimi
+
+Gelecek hedefler:
 - [ ] Sohbet geçmişinin kalıcı olarak saklanması
 - [ ] Çoklu eş zamanlı yayın izleme desteği
 - [ ] YouTube/müzik linki paylaşımı ile ortak dinleme botu
