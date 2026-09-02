@@ -991,6 +991,8 @@ function sesEsigiOlcumuBaslat() {
   if (esikOlcumInterval) clearInterval(esikOlcumInterval);
   const veriDizisi = new Uint8Array(mikrofonAnalyserNode.frequencyBinCount);
   let mevcutKazanc = 1;
+  let debugSayi = 0;
+  const DEBUG = false; // Development mode: true yapınca console log çıkacak
 
   esikOlcumInterval = setInterval(() => {
     if (!mikrofonAnalyserNode) return;
@@ -1011,6 +1013,11 @@ function sesEsigiOlcumuBaslat() {
     mevcutKazanc += (hedefKazanc - mevcutKazanc) * 0.3;
     const girisSeviyesi = (ayarlar.mikrofonGirisSeviyesi ?? 100) / 100;
     mikrofonGainNode.gain.setTargetAtTime(mevcutKazanc * girisSeviyesi, mikrofonAudioContext.currentTime, 0.05);
+
+    // Debug: Her 20 intervalin (yaklaşık 1 saniyede) birini yazdır (sadece DEBUG true ise)
+    if (DEBUG && ++debugSayi % 20 === 0) {
+      console.log(`🎤 Ses: ${db.toFixed(1)} dB | Eşik: ${esik} dB | Geçiyor: ${db > esik ? '✅ EVET' : '❌ HAYIR'} | Kazanç: ${mevcutKazanc.toFixed(2)}`);
+    }
   }, 50);
 }
 
@@ -1562,13 +1569,50 @@ const elAyarHoparlorSecim = document.getElementById('ayarHoparlorSecim');
 const elAyarAnaSesSeviyesi = document.getElementById('ayarAnaSesSeviyesi');
 const elKisayolMikrofonBtn = document.getElementById('kisayolMikrofonBtn');
 const elKisayolYayinBtn = document.getElementById('kisayolYayinBtn');
+const elAyarSesLevelFill = document.getElementById('ayarSesLevelFill');
+
+let sesLevelAnimasyonId = null;
+
+function ayarlarSesSeviyesiGoster() {
+  if (!mikrofonAnalyserNode) return;
+  
+  const veriDizisi = new Uint8Array(mikrofonAnalyserNode.frequencyBinCount);
+  mikrofonAnalyserNode.getByteTimeDomainData(veriDizisi);
+  
+  let toplam = 0;
+  for (let i = 0; i < veriDizisi.length; i++) {
+    toplam += veriDizisi[i];
+  }
+  const ortalama = toplam / veriDizisi.length;
+  
+  // 0-255 → 0-100% (128 = sessizlik, 255 = max ses)
+  const yuzde = Math.min(100, (ortalama / 255) * 100);
+  elAyarSesLevelFill.style.width = yuzde + '%';
+  
+  sesLevelAnimasyonId = requestAnimationFrame(ayarlarSesSeviyesiGoster);
+}
 
 elBtnAyarlar.addEventListener('click', async () => {
   await cihazlariListele();
   kisayolMetniGoster();
+  ayarlariGuncelle();  // ⭐ KRITIK: Ayarlar modal açılınca, kaydedilen değerleri slider'lara yükle
   elAyarlarModal.classList.remove('gizli');
+  
+  // Ses level animasyonunu başlat
+  if (sesLevelAnimasyonId) cancelAnimationFrame(sesLevelAnimasyonId);
+  sesLevelAnimasyonId = requestAnimationFrame(ayarlarSesSeviyesiGoster);
 });
-elBtnAyarlarKapat.addEventListener('click', () => elAyarlarModal.classList.add('gizli'));
+
+elBtnAyarlarKapat.addEventListener('click', () => {
+  elAyarlarModal.classList.add('gizli');
+  
+  // Ses level animasyonunu durdur
+  if (sesLevelAnimasyonId) {
+    cancelAnimationFrame(sesLevelAnimasyonId);
+    sesLevelAnimasyonId = null;
+    elAyarSesLevelFill.style.width = '0%';
+  }
+});
 
 const elAyarGurultuSuppression = document.getElementById('ayarGurultuSuppression');
 const elAyarSesEsigi = document.getElementById('ayarSesEsigi');
@@ -1578,6 +1622,12 @@ elAyarSesEsigi.addEventListener('input', async () => {
   ayarlar.sesEsigi = Number(elAyarSesEsigi.value);
   elSesEsigiMetin.textContent = `${ayarlar.sesEsigi} dB`;
   await ayarlariKaydet();
+  
+  // ⭐ KRITIK: Ses eşiği değişince interval'i restart et, değişiklik hemen uygulanır
+  if (esikOlcumInterval) {
+    clearInterval(esikOlcumInterval);
+    sesEsigiOlcumuBaslat();
+  }
 });
 
 function ayarlariGuncelle() {
@@ -1586,6 +1636,7 @@ function ayarlariGuncelle() {
   elAyarAnaSesSeviyesi.value = Math.min(100, ayarlar.anaSesSeviyesi ?? 100);
   elAyarGurultuSuppression.checked = ayarlar.gurultuSuppression ?? false;
   elAyarSesEsigi.value = ayarlar.sesEsigi ?? -30;
+  elSesEsigiMetin.textContent = `${ayarlar.sesEsigi ?? -30} dB`;  // ⭐ Metni de güncelle
   elAyarLimiterAcik.checked = ayarlar.limiterAcik ?? true;
   elAyarLimiterEsik.value = ayarlar.limiterEsik ?? -12;
   elLimiterEsikMetin.textContent = `${ayarlar.limiterEsik ?? -12} dB`;
