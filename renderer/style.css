@@ -321,6 +321,62 @@ body {
 }
 .buton-tam-ekran:hover { background: rgba(0,0,0,0.75); }
 
+.yayin-ses-kontrol {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(0,0,0,0.8);
+  border: 1px solid var(--kenar);
+  border-radius: 8px;
+  padding: 12px 16px;
+  min-width: 240px;
+  z-index: 10;
+}
+.yayin-ses-kontrol.gizli { display: none; }
+.yayin-ses-baslik {
+  font-size: 12px;
+  color: var(--metin);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.yayin-ses-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.yayin-ses-kaydirici {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-2);
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+}
+.yayin-ses-kaydirici::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--vurgu);
+  cursor: pointer;
+}
+.yayin-ses-kaydirici::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--vurgu);
+  cursor: pointer;
+  border: none;
+}
+.yayin-ses-degeri {
+  font-size: 11px;
+  color: var(--metin-soluk);
+  min-width: 30px;
+  text-align: right;
+}
+
 .katilimci-listesi-panel {
   width: 220px;
   margin-left: auto;
