@@ -158,6 +158,7 @@ function başlantıDurumuGüncelle(durum) {
   bağlantıDurumu = durum;
   const elDurum = document.getElementById('bağlantıDurumu');
   if (!elDurum) return;
+  elDurum.classList.remove('gizli');
   const durumlar = {
     'bağlı': { text: '🟢 Bağlı', color: '#4ade80' },
     'bağlanıyor': { text: '🟡 Bağlanıyor...', color: '#fbbf24' },
@@ -167,6 +168,22 @@ function başlantıDurumuGüncelle(durum) {
   const info = durumlar[durum] || durumlar['kesildi'];
   elDurum.textContent = info.text;
   elDurum.style.color = info.color;
+}
+
+function başlantıDurumunuGizle() {
+  document.getElementById('bağlantıDurumu')?.classList.add('gizli');
+}
+
+// Mikrofon işareti sadece sesli bir kanala bağlıyken görünür.
+function mikrofonGostergesiGuncelle() {
+  const el = document.getElementById('mikrofonDurumuGöstergesi');
+  if (!el) return;
+  if (!room || aktifKanal?.type !== 'voice') {
+    el.classList.add('gizli');
+    return;
+  }
+  el.classList.remove('gizli');
+  el.classList.toggle('aktif', mikrofonAcik);
 }
 
 function afkKontrolünüBaşlat() {
@@ -531,6 +548,7 @@ async function kanalaGec(kanal) {
   elSohbetMesajlari.innerHTML = '';
 
   elAktifKanalAdi.textContent = t('baglaniyor');
+  başlantıDurumuGüncelle('bağlanıyor');
 
   try {
     const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/token`, {
@@ -541,6 +559,7 @@ async function kanalaGec(kanal) {
 
     if (resp.status === 409) {
       elAktifKanalAdi.textContent = t('birKanalSec');
+      başlantıDurumunuGizle();
       alert(`"${mevcutKullanici.name}" ${t('isimKullaniliyorUyari')}`);
       return;
     }
@@ -558,6 +577,8 @@ async function kanalaGec(kanal) {
       });
     });
 
+    başlantıDurumuGüncelle('bağlı');
+
     if (kanal.type === 'voice') {
       mikrofonAcik = true;
       await mikrofonuBaslatVeYayinla();
@@ -572,8 +593,9 @@ async function kanalaGec(kanal) {
       elBtnEkranPaylas.classList.add('gizli');
       elBtnSesPaneli.classList.add('gizli');
     }
-    elBtnKanaldanAyril.classList.remove('gizli');
     aktifKanal = kanal;
+    mikrofonGostergesiGuncelle();
+    elBtnKanaldanAyril.classList.remove('gizli');
     elAktifKanalAdi.textContent = (kanal.type === 'text' ? '💬 ' : '# ') + kanal.name;
     kanalListesiniCiz();
     katilimcilariYenidenCiz();
@@ -581,6 +603,7 @@ async function kanalaGec(kanal) {
 
   } catch (err) {
     console.error(err);
+    başlantıDurumunuGizle();
     elAktifKanalAdi.textContent = t('baglanilamadi');
     alert(t('baglanilamadiUyari'));
   }
@@ -727,6 +750,9 @@ function baglaOlayDinleyicileri() {
     }
   });
 
+  room.on(RoomEvent.Reconnecting, () => başlantıDurumuGüncelle('yeniden bağlanılıyor'));
+  room.on(RoomEvent.Reconnected, () => başlantıDurumuGüncelle('bağlı'));
+
   room.on(RoomEvent.Disconnected, () => {
     document.getElementById('sesCikiyor').play().catch(() => {});
     ekranPaylasimiDurdur(null);
@@ -734,6 +760,8 @@ function baglaOlayDinleyicileri() {
     sesPaneliDurdur();
     paylasilanContextKapat();
     aktifKanal = null;
+    başlantıDurumunuGizle();
+    mikrofonGostergesiGuncelle();
     elAktifKanalAdi.textContent = t('birKanalSec');
     elBtnMikrofon.classList.add('gizli');
     elBtnEkranPaylas.classList.add('gizli');
@@ -862,6 +890,7 @@ function mikrofonuAcKapa() {
   }
   elBtnMikrofon.textContent = mikrofonAcik ? '🎙️' : '🔇';
   elBtnMikrofon.classList.toggle('aktif-kapali', !mikrofonAcik);
+  mikrofonGostergesiGuncelle();
 }
 async function mikrofonuBaslatVeYayinla() {
   try {
