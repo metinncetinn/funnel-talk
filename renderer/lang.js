@@ -74,7 +74,19 @@ const TRANSLATIONS = {
     baglıDurum: '🟢 Bağlı',
     baglantıKesildi: '🔴 Bağlantı Kesildi',
     yenidenbağlanılıyor: '🟠 Yeniden Bağlanılıyor...',
-    afkDurumu: '😴 AFK'
+    afkDurumu: '😴 AFK',
+    sesLevel: '🎤 Sound Level',
+    kişi: 'person',
+    çevrimiçi: 'Online',
+    mikrofonAçık: '🎤 Microphone On',
+    mikrofonKapalı: '🔇 Microphone Off',
+    sesŞiddetliUyarı: 'Sound too loud!',
+    sesLevel: '🎤 Ses Seviyesi',
+    kişi: 'kişi',
+    çevrimiçi: 'Çevrimiçi',
+    mikrofonAçık: '🎤 Mikrofon Açık',
+    mikrofonKapalı: '🔇 Mikrofon Kapalı',
+    sesŞiddetliUyarı: 'Ses çok yüksek!'
   },
   en: {
     girisAdLabel: 'Your Name',

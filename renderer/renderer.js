@@ -107,6 +107,53 @@ let afkTimeoutId = null;
 const AFK_TIMEOUT = 5 * 60 * 1000;
 let screenShareAudioTracks = new Map();
 
+// BATCH 2: UX IMPROVEMENTS
+const kullanıcıRenkleri = new Map(); // participant.sid -> renk (hex)
+let sesAnalyzer = null;
+let sesMeterAnimationId = null;
+const RENK_PALETI = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#EECDA7'];
+
+function rastgeleRenkAl() {
+  return RENK_PALETI[Math.floor(Math.random() * RENK_PALETI.length)];
+}
+
+function kullanıcıRenginiAl(sid) {
+  if (!kullanıcıRenkleri.has(sid)) {
+    kullanıcıRenkleri.set(sid, rastgeleRenkAl());
+  }
+  return kullanıcıRenkleri.get(sid);
+}
+
+function sesLeveliniGüncelle() {
+  if (!sesAnalyzer || !mikrofonAudioContext) return;
+  
+  try {
+    const dataArray = new Uint8Array(sesAnalyzer.frequencyBinCount);
+    sesAnalyzer.getByteFrequencyData(dataArray);
+    const toplam = dataArray.reduce((a, b) => a + b, 0);
+    const seviye = Math.round((toplam / dataArray.length) / 2.55);
+    
+    const elMeter = document.getElementById('sesLevelMeterBar');
+    if (elMeter) {
+      elMeter.style.width = Math.min(100, seviye) + '%';
+      elMeter.style.background = seviye > 80 ? '#ef4444' : seviye > 60 ? '#fbbf24' : '#4ade80';
+    }
+  } catch (e) {
+    // Analyser closed, stop animation
+    if (sesMeterAnimationId) cancelAnimationFrame(sesMeterAnimationId);
+    return;
+  }
+  
+  sesMeterAnimationId = requestAnimationFrame(sesLeveliniGüncelle);
+}
+
+function sesMeteriniDurdur() {
+  if (sesMeterAnimationId) cancelAnimationFrame(sesMeterAnimationId);
+  sesMeterAnimationId = null;
+  const elMeter = document.getElementById('sesLevelMeterBar');
+  if (elMeter) elMeter.style.width = '0%';
+}
+
 function başlantıDurumuGüncelle(durum) {
   bağlantıDurumu = durum;
   const elDurum = document.getElementById('bağlantıDurumu');
@@ -440,6 +487,21 @@ setInterval(() => {
     tumKanalKatilimcilariniGuncelle();
   }
 }, 5000);
+
+function sesMeterPaneliniGöster(göster) {
+  const elPanel = document.getElementById('sesLevelPanel');
+  if (!elPanel) return;
+  if (göster && !elPanel.classList.contains('gizli')) return;
+  if (!göster && elPanel.classList.contains('gizli')) return;
+  
+  if (göster) {
+    elPanel.classList.remove('gizli');
+    if (!sesMeterAnimationId) sesLeveliniGüncelle();
+  } else {
+    elPanel.classList.add('gizli');
+    sesMeteriniDurdur();
+  }
+}
 
 async function kanalaGec(kanal) {
   if (aktifKanal?.name === kanal.name) return;

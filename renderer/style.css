@@ -321,7 +321,96 @@ body {
 }
 .buton-tam-ekran:hover { background: rgba(0,0,0,0.75); }
 
-.bağlantı-durumu {
+.mikrofon-durumu-kontrol {
+  position: relative;
+  display: inline-block;
+}
+.mikrofon-durumu-noktası {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  transition: background 200ms, box-shadow 200ms;
+}
+.mikrofon-durumu-noktası.aktif {
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+
+.ses-level-panel {
+  position: absolute;
+  top: 16px;
+  right: 280px;
+  background: rgba(0,0,0,0.85);
+  border: 1px solid var(--kenar);
+  border-radius: 8px;
+  padding: 12px 16px;
+  width: 200px;
+  z-index: 10;
+}
+.ses-level-panel.gizli { display: none; }
+.ses-level-başlık {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--metin);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ses-level-konteyner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ses-level-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--bg-2);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+.kanal-katilimci-sayı {
+  font-size: 10px;
+  color: var(--metin-soluk);
+  margin-top: 4px;
+  text-align: right;
+  font-weight: 500;
+}
+
+.kullanıcı-avatar {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  margin-right: 6px;
+  vertical-align: middle;
+  font-weight: 600;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.kisi-ad {
+  display: flex;
+  align-items: center;
+}
+
+.ses-level-bar::after {
+  content: '';
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #fbbf24);
+  width: 0%;
+  transition: width 100ms linear, background 100ms;
+}
+
+.bağlantı-durumu {.bağlantı-durumu {
   font-size: 12px;
   font-weight: 600;
   padding: 6px 10px;
