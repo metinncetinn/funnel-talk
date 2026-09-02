@@ -47,6 +47,9 @@ const elSohbetInput = document.getElementById('sohbetInput');
 const elBtnSohbetGonder = document.getElementById('btnSohbetGonder');
 const elBtnChatEk = document.getElementById('btnChatEk');
 const elChatFileInput = document.getElementById('chatFileInput');
+const elChatMediaModal = document.getElementById('chatMediaModal');
+const elChatMediaContent = document.getElementById('chatMediaContent');
+const elChatMediaClose = document.getElementById('chatMediaClose');
 const elModal = document.getElementById('kaynakSecimModal');
 const elKaynakListesi = document.getElementById('kaynakListesi');
 const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
@@ -601,6 +604,7 @@ async function kanalaGec(kanal) {
     elAktifKanalAdi.textContent = (kanal.type === 'text' ? '💬 ' : '# ') + kanal.name;
     kanalListesiniCiz();
     katilimcilariYenidenCiz();
+    await sohbetGecmisiniYukle(kanal.name);
     document.getElementById('sesGeliyor').play().catch(() => {});
 
   } catch (err) {
@@ -1240,11 +1244,89 @@ function silSohbetMesaji(messageId) {
   mesajEl?.remove();
 }
 
+async function sohbetMesajiniSunucuyaKaydet(payload) {
+  if (!payload || !aktifKanal?.name) return;
+  try {
+    await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/chat-messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel: aktifKanal.name, message: payload })
+    });
+  } catch (error) {
+    console.warn('Mesaj sunucuya kaydedilemedi:', error);
+  }
+}
+
+async function sohbetGecmisiniYukle(kanalAdi) {
+  try {
+    const response = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/chat-messages/${encodeURIComponent(kanalAdi)}`);
+    if (!response.ok) throw new Error(`History request failed: ${response.status}`);
+    const mesajlar = await response.json();
+    mesajlar.forEach((payload) => {
+      const attachment = payload.attachment || null;
+      sohbetMesajiEkle(payload.yazar, payload.metin || attachment?.filename || '', payload.yazar === mevcutKullanici?.name, payload);
+    });
+  } catch (error) {
+    console.warn('Mesaj geçmişi yüklenemedi:', error);
+  }
+}
+
+async function silChatDosya(attachment) {
+  if (!attachment?.id || !attachment?.url) return;
+}
+
+function acilacakMedyaGoster(attachment) {
+  if (!attachment?.url) return;
+  const content = document.createElement('div');
+  const mimeType = attachment.mimeType || '';
+
+  if (mimeType.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.src = attachment.url;
+    img.alt = attachment.filename || 'Görüntü';
+    content.appendChild(img);
+  } else if (mimeType.startsWith('video/')) {
+    const video = document.createElement('video');
+    video.src = attachment.url;
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    content.appendChild(video);
+  } else {
+    const link = document.createElement('a');
+    link.href = attachment.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = `Dosyayı aç: ${attachment.filename || 'dosya'}`;
+    content.appendChild(link);
+  }
+
+  elChatMediaContent.innerHTML = '';
+  elChatMediaContent.appendChild(content);
+  elChatMediaModal.classList.remove('gizli');
+}
+
+function medyaIndir(attachment) {
+  if (!attachment?.url) return;
+  if (window.electronAPI && typeof window.electronAPI.saveFileFromUrl === 'function') {
+    window.electronAPI.saveFileFromUrl(attachment.url, attachment.filename || 'dosya');
+    return;
+  }
+  const a = document.createElement('a');
+  a.href = attachment.url;
+  a.download = attachment.filename || 'dosya';
+  a.target = '_blank';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 function sohbetGonder() {
   const metin = elSohbetInput.value.trim();
   if (!metin || !room) return;
   const payload = { tip: 'chat-message', id: sohbetMesajIdUret(), yazar: mevcutKullanici.name, metin, zaman: Date.now() };
   sohbetMesajiYayinla(payload);
+  sohbetMesajiniSunucuyaKaydet(payload);
   sohbetMesajiEkle(mevcutKullanici.name, metin, true, payload);
   elSohbetInput.value = '';
 }
@@ -1296,6 +1378,7 @@ async function chatDosyaGonder() {
     };
 
     sohbetMesajiYayinla(payload);
+    sohbetMesajiniSunucuyaKaydet(payload);
     sohbetMesajiEkle(mevcutKullanici.name, attachment.filename, true, payload);
   } catch (error) {
     console.error('Chat dosya upload hatasi', error);
@@ -1309,6 +1392,10 @@ elBtnSohbetGonder.addEventListener('click', sohbetGonder);
 elSohbetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sohbetGonder(); });
 elBtnChatEk.addEventListener('click', () => elChatFileInput.click());
 elChatFileInput.addEventListener('change', chatDosyaGonder);
+elChatMediaClose.addEventListener('click', () => elChatMediaModal.classList.add('gizli'));
+elChatMediaModal.addEventListener('click', (event) => {
+  if (event.target === elChatMediaModal) elChatMediaModal.classList.add('gizli');
+});
 
 function sohbetMesajIceriginiHazirla(metin) {
   if (!metin || typeof metin !== 'string') return document.createTextNode('');
@@ -1381,6 +1468,7 @@ function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
       img.alt = attachment.filename || 'image';
       const wrap = document.createElement('div');
       wrap.className = 'chat-ek-ortam';
+      wrap.addEventListener('click', () => acilacakMedyaGoster(attachment));
       wrap.appendChild(img);
       medyaKapsayici.appendChild(wrap);
     } else if (dosyaTipi.startsWith('video/')) {
@@ -1390,6 +1478,7 @@ function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
       video.preload = 'metadata';
       const wrap = document.createElement('div');
       wrap.className = 'chat-ek-ortam';
+      wrap.addEventListener('click', () => acilacakMedyaGoster(attachment));
       wrap.appendChild(video);
       medyaKapsayici.appendChild(wrap);
     }
@@ -1400,8 +1489,22 @@ function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
     link.textContent = attachment.filename || 'Dosya indir';
-    link.download = attachment.filename || 'dosya';
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      if (attachment.mimeType?.startsWith('image/') || attachment.mimeType?.startsWith('video/')) {
+        acilacakMedyaGoster(attachment);
+        return;
+      }
+      medyaIndir(attachment);
+    });
     medyaKapsayici.appendChild(link);
+
+    const downloadBtn = document.createElement('button');
+    downloadBtn.type = 'button';
+    downloadBtn.className = 'chat-download-btn';
+    downloadBtn.textContent = '⬇️ İndir';
+    downloadBtn.addEventListener('click', () => medyaIndir(attachment));
+    medyaKapsayici.appendChild(downloadBtn);
   }
 
   const metinText = typeof metin === 'string' && metin.trim() && !attachment?.url ? metin : '';
@@ -1420,11 +1523,25 @@ function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
   const isOwnMessage = benMi || (mevcutKullanici && yazar === mevcutKullanici.name);
   const isAdmin = kullaniciAdminMi(yazar) || kullaniciAdminMi(mevcutKullanici?.name);
   if (isOwnMessage || isAdmin) {
-    silButonu.addEventListener('click', () => {
+    silButonu.addEventListener('click', async () => {
       const targetId = div.dataset.messageId;
       if (!targetId) return;
-      const payload = { tip: 'chat-delete', id: targetId, yazar: mevcutKullanici?.name || 'admin', zaman: Date.now() };
-      sohbetMesajiYayinla(payload);
+
+      const attachment = payload?.attachment;
+      try {
+        const response = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/chat-messages/${encodeURIComponent(targetId)}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ requester: mevcutKullanici?.name || '' })
+        });
+        if (!response.ok) throw new Error(`Delete request failed: ${response.status}`);
+      } catch (error) {
+        console.warn('Mesaj sunucudan silinemedi:', error);
+        return;
+      }
+
+      const payloadDelete = { tip: 'chat-delete', id: targetId, yazar: mevcutKullanici?.name || 'admin', zaman: Date.now() };
+      sohbetMesajiYayinla(payloadDelete);
       silSohbetMesaji(targetId);
     });
     div.append(yazarEl, metinEl, silButonu);

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, desktopCapturer, shell, globalShortcut, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, desktopCapturer, shell, globalShortcut, Tray, Menu, dialog } = require('electron');
 app.setName('SesliOdaVerisi');
 const path = require('path');
 const fs = require('fs');
@@ -123,6 +123,29 @@ ipcMain.handle('install-update', () => {
   isQuitting = true;
   autoUpdater.quitAndInstall(false, true);
   return true;
+});
+
+ipcMain.handle('save-url-to-file', async (_event, { url, filename }) => {
+  if (typeof url !== 'string' || !url.trim()) return false;
+
+  const defaultName = filename || url.split('/').pop() || 'dosya';
+  const { canceled, filePath } = await dialog.showSaveDialog({
+    title: 'Dosyayı kaydet',
+    defaultPath: defaultName
+  });
+
+  if (canceled || !filePath) return false;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Download failed');
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(filePath, buffer);
+    return filePath;
+  } catch (err) {
+    console.warn('Dosya indirilemedi:', err);
+    return false;
+  }
 });
 
 ipcMain.on('open-external-link', (_event, url) => {

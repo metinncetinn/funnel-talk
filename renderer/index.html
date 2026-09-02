@@ -90,6 +90,12 @@
           </div>
           <input id="chatFileInput" type="file" class="gizli" accept="image/*,video/*,.pdf,.txt,.doc,.docx,.zip,.rar,.ppt,.pptx,.xls,.xlsx,.csv,.mp3,.wav" />
         </div>
+        <div id="chatMediaModal" class="chat-media-modal gizli" aria-modal="true" role="dialog">
+          <div class="chat-media-shell">
+            <button id="chatMediaClose" class="chat-media-close" type="button" aria-label="Kapat">✕</button>
+            <div id="chatMediaContent" class="chat-media-content"></div>
+          </div>
+        </div>
         <div id="katilimciListesiPanel" class="katilimci-listesi-panel gizli">
           <div class="katilimci-listesi-baslik" data-i18n="cevrimiciBaslik">Çevrimiçi</div>
           <div id="cevrimiciListesi" class="cevrimici-listesi"></div>
