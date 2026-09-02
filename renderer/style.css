@@ -401,6 +401,56 @@ body {
   align-items: center;
 }
 
+.bildirim {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.95);
+  border: 1px solid var(--kenar);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: var(--metin);
+  font-size: 13px;
+  max-width: 300px;
+  z-index: 1000;
+  animation: bildirimGir 300ms ease-out;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+@keyframes bildirimGir {
+  from {
+    opacity: 0;
+    transform: translateX(20px) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}
+.bildirim-başarı { border-left: 4px solid #4ade80; }
+.bildirim-hata { border-left: 4px solid #ef4444; }
+.bildirim-uyarı { border-left: 4px solid #fbbf24; }
+.bildirim-bilgi { border-left: 4px solid #3b82f6; }
+
+.kanal-favorisi {
+  position: relative;
+}
+.kanal-favorisi::before {
+  content: '⭐';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+}
+
+.sohbet-sistemi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
 .ses-level-bar::after {
   content: '';
   display: block;
