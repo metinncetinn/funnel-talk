@@ -665,6 +665,10 @@ function baglaOlayDinleyicileri() {
   });
 
   room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
+    // ⭐ KRITIK: Local participant (kendimiz) kendi track'lerini dinlemeyelim
+    // Böylece yayıncı kendi sesini duyması (echo/feedback) önlenir
+    if (participant.isLocal) return;
+
     if (track.kind === Track.Kind.Audio) {
       const el = track.attach(); // Basit, güvenilir yol - önceki sürümün davranışı
       el.style.display = 'none';
