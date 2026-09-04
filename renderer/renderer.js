@@ -692,6 +692,7 @@ function baglaOlayDinleyicileri() {
       track.attach(elYayinVideo);
       elYayinAlani.classList.remove('gizli');
       elKatilimciListesiPanel.classList.remove('gizli');
+      elSohbetPaneli.classList.add('gizli');
       izlenenYayinKimlik = participant.sid;
       
       // Önceki yayınların ses seviyesini yükle
@@ -727,6 +728,7 @@ function baglaOlayDinleyicileri() {
     if (publication.source === Track.Source.ScreenShare && izlenenYayinKimlik === participant.sid) {
       elYayinAlani.classList.add('gizli');
       elKatilimciListesiPanel.classList.add('gizli');
+      elSohbetPaneli.classList.remove('gizli');
       izlenenYayinKimlik = null;
       elYayinSesKontrol.classList.add('gizli');
     }
