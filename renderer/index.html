@@ -113,37 +113,64 @@
       </div>
     
       <div class="sekme-icerik" data-icerik="donanim">
-        <label data-i18n="mikrofonLabel">Mikrofon</label>
-        <select id="ayarMikrofonSecim"></select>
-        <label>Mikrofon Giriş Seviyesi</label>
-        <input id="ayarMikrofonGirisSeviyesi" type="range" min="0" max="200" value="100" />
         
-        <label data-i18n="hoparlorLabel">Hoparlör</label>
-        <select id="ayarHoparlorSecim"></select>
-      
-        <label data-i18n="anaSesSeviyesi">Ana ses seviyesi</label>
-        <input id="ayarAnaSesSeviyesi" type="range" min="0" max="100" value="100" />
-      
-        <label data-i18n="sesPaneliSesi">Ses Paneli Sesi</label>
-        <input id="ayarSesPaneliSeviyesi" type="range" min="0" max="100" value="100" />
-      
-        <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
-          <input id="ayarGurultuSuppression" type="checkbox" />
-          <span data-i18n="gurultuEngelleme">Gürültü Engelleme (Noise Cancellation)</span>
-        </label>
-        <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
-          <input id="ayarLimiterAcik" type="checkbox" checked />
-          <span data-i18n="yuksekSesSinirlayici">Yüksek Ses Sınırlayıcı (Limiter)</span>
-        </label>
-        <input id="ayarLimiterEsik" type="range" min="-40" max="0" value="-12" />
-        <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
-          <span id="limiterEsikMetin">-12 dB</span> — <span data-i18n="limiterAciklama">daha düşük = daha erken devreye girer</span>
-        </span>
-        <label data-i18n="sesEsigiLabel">Ses Eşiği (Voice Activation)</label>
-        <input id="ayarSesEsigi" type="range" min="-60" max="0" value="-30" />
-        <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
-          <span id="sesEsigiMetin">-30 dB</span> — <span data-i18n="sesEsigiAciklama">daha düşük = daha hassas</span>
-        </span>
+        <!-- MIKROFON AYARLARI -->
+        <div style="padding-bottom: 16px; border-bottom: 1px solid var(--kenar); margin-bottom: 16px;">
+          <label data-i18n="mikrofonLabel">Mikrofon</label>
+          <select id="ayarMikrofonSecim"></select>
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Hangi mikrofonu kullanacağını seç</p>
+          
+          <label style="margin-top: 12px;">Mikrofon Giriş Seviyesi</label>
+          <input id="ayarMikrofonGirisSeviyesi" type="range" min="0" max="200" value="100" />
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Mikrofondan gelen sesin ne kadar yükseltileceğini (0-200%) ayarla</p>
+          
+          <!-- SES SEVİYESİ GÖSTERGESİ -->
+          <div id="ayarSesLevelPanel" style="margin-top: 12px; padding: 10px; background: var(--bg-2); border-radius: 6px;">
+            <div style="font-size: 12px; color: var(--metin-soluk); margin-bottom: 6px;">📊 Real-time Ses Seviyesi</div>
+            <div id="ayarSesLevelBar" style="width: 100%; height: 8px; background: var(--bg-1); border-radius: 4px; overflow: hidden;">
+              <div id="ayarSesLevelFill" style="height: 100%; background: linear-gradient(90deg, #4CAF50, #FFC107, #FF5252); width: 0%; transition: width 0.05s linear;"></div>
+            </div>
+            <div style="font-size: 11px; color: var(--metin-soluk); margin-top: 6px;">Konuş, bar kımıldayacak</div>
+          </div>
+
+          <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
+            <input id="ayarLimiterAcik" type="checkbox" checked />
+            <span data-i18n="yuksekSesSinirlayici">Yüksek Ses Sınırlayıcı (Limiter)</span>
+          </label>
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 2px;">Çok yüksek sesleri (bağırma) otomatik bastırır, normall konuşmaya dokunmaz</p>
+          <input id="ayarLimiterEsik" type="range" min="-40" max="0" value="-12" style="margin-top: 6px;" />
+          <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
+            <span id="limiterEsikMetin">-12 dB</span> — <span data-i18n="limiterAciklama">daha düşük = daha erken devreye girer</span>
+          </span>
+
+          <label style="margin-top: 14px;">Ses Eşiği (Voice Activation)</label>
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 2px;">Bu seviyenin altındaki sesleri (fan, süpürge vb.) fıltreler, sadece senin sesin geçer</p>
+          <input id="ayarSesEsigi" type="range" min="-60" max="0" value="-30" style="margin-top: 6px;" />
+          <span style="font-size: 11px; color: var(--metin-soluk); display: block; margin-top: 4px;">
+            <span id="sesEsigiMetin">-30 dB</span> — <span data-i18n="sesEsigiAciklama">daha düşük = daha hassas, daha yüksek = daha dayanıklı</span>
+          </span>
+        </div>
+
+        <!-- HOPARLÖR AYARLARI -->
+        <div>
+          <label data-i18n="hoparlorLabel">Hoparlör</label>
+          <select id="ayarHoparlorSecim"></select>
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Sesin çıkacağı cihazı seç</p>
+        
+          <label style="margin-top: 12px;" data-i18n="anaSesSeviyesi">Ana Ses Seviyesi</label>
+          <input id="ayarAnaSesSeviyesi" type="range" min="0" max="100" value="100" />
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Tüm seslerin genel ses seviyesi (arkadaşların sesi, ses paneli, bildirim sesleri)</p>
+        
+          <label style="margin-top: 12px;" data-i18n="sesPaneliSesi">Ses Paneli Sesi</label>
+          <input id="ayarSesPaneliSeviyesi" type="range" min="0" max="100" value="100" />
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Ses panelindeki efekt seslerinin seviyesi</p>
+
+          <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
+            <input id="ayarGurultuSuppression" type="checkbox" />
+            <span data-i18n="gurultuEngelleme">Gürültü Engelleme (Noise Cancellation)</span>
+          </label>
+          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 2px;">Arka plan gürültüsünü azaltır (keyboard, mouse tıklaması vb.)</p>
+        </div>
       </div>
     
       <div class="sekme-icerik gizli" data-icerik="gorunum">

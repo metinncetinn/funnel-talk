@@ -11,6 +11,29 @@
   --tehlike: #d83c30;
 }
 
+/* Scroll bar styling (Webkit tarayıcıları için) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--kenar);
+  border-radius: 5px;
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--metin-soluk);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
 body[data-theme="acik"] {
   --bg-1: #f4f5f7;
   --bg-2: #ffffff;
