@@ -50,6 +50,7 @@ const elChatFileInput = document.getElementById('chatFileInput');
 const elChatMediaModal = document.getElementById('chatMediaModal');
 const elChatMediaContent = document.getElementById('chatMediaContent');
 const elChatMediaClose = document.getElementById('chatMediaClose');
+const elKatilimciListesiPanel = document.getElementById('katilimciListesiPanel');
 const elModal = document.getElementById('kaynakSecimModal');
 const elKaynakListesi = document.getElementById('kaynakListesi');
 const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
