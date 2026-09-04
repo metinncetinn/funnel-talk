@@ -637,15 +637,16 @@ body {
 }
 
 .yayin-ses-kontrol {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  background: rgba(0,0,0,0.8);
+  position: fixed;
+  bottom: 20px;
+  right: 250px;
+  background: rgba(0,0,0,0.9);
+  backdrop-filter: blur(4px);
   border: 1px solid var(--kenar);
   border-radius: 8px;
   padding: 12px 16px;
   min-width: 240px;
-  z-index: 10;
+  z-index: 101;
 }
 .yayin-ses-kontrol.gizli { display: none; }
 .yayin-ses-baslik {
@@ -693,14 +694,18 @@ body {
 }
 
 .katilimci-listesi-panel {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
   width: 220px;
-  margin-left: auto;
   background: var(--bg-3);
   border-left: 1px solid var(--kenar);
   padding: 12px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+  z-index: 100;
 }
 .katilimci-listesi-panel.gizli { display: none; }
 .katilimci-listesi-baslik { font-size: 11px; color: #888; margin-bottom: 8px; font-weight: 600; }

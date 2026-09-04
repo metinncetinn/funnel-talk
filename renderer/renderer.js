@@ -690,6 +690,7 @@ function baglaOlayDinleyicileri() {
     } else if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
       track.attach(elYayinVideo);
       elYayinAlani.classList.remove('gizli');
+      elKatilimciListesiPanel.classList.remove('gizli');
       izlenenYayinKimlik = participant.sid;
       
       // Önceki yayınların ses seviyesini yükle
@@ -724,6 +725,7 @@ function baglaOlayDinleyicileri() {
     sesKontrolKayitlari.delete(publication.trackSid);
     if (publication.source === Track.Source.ScreenShare && izlenenYayinKimlik === participant.sid) {
       elYayinAlani.classList.add('gizli');
+      elKatilimciListesiPanel.classList.add('gizli');
       izlenenYayinKimlik = null;
       elYayinSesKontrol.classList.add('gizli');
     }
@@ -1462,7 +1464,8 @@ function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
 
   const yazarEl = document.createElement('div');
   yazarEl.className = 'yazar';
-  yazarEl.textContent = `${yazar}${benMi ? ' (sen)' : ''}`;
+  const zamanStr = payload?.zaman ? new Date(payload.zaman).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'}) : '';
+  yazarEl.textContent = `${yazar}${benMi ? ' (sen)' : ''} ${zamanStr ? '• ' + zamanStr : ''}`;
 
   const metinEl = document.createElement('div');
   metinEl.className = 'metin';
