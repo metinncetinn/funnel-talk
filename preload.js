@@ -16,5 +16,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onGuncellemeHazir: (callback) => ipcRenderer.on('guncelleme-hazir', (_e, bilgi) => callback(bilgi)),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   openExternal: (url) => ipcRenderer.send('open-external-link', url),
-  saveFileFromUrl: (url, filename) => ipcRenderer.invoke('save-url-to-file', { url, filename })
+  saveFileFromUrl: (url, filename) => ipcRenderer.invoke('save-url-to-file', { url, filename }),
+  nativeAudioCaptureAvailable: () => ipcRenderer.invoke('native-audio-capture-available'),
+  startNativeAudioCapture: () => ipcRenderer.invoke('start-native-audio-capture'),
+  stopNativeAudioCapture: () => ipcRenderer.invoke('stop-native-audio-capture'),
+  onNativeAudioData: (callback) => ipcRenderer.on('native-audio-data', (_event, data, meta) => callback(data, meta))
 });

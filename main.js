@@ -5,6 +5,13 @@ const fs = require('fs');
 const http = require('http');
 const { autoUpdater } = require("electron-updater");
 
+let nativeAudioCapture = null;
+try {
+  nativeAudioCapture = require('electron-native-screenshare');
+} catch (error) {
+  console.warn('Native sistem sesi yakalama kullanılamıyor:', error.message);
+}
+
 // ==== GOOGLE ILE GIRIS AYARLARI ====
 // Google Cloud Console > APIs & Services > Credentials > Create Credentials
 // > OAuth client ID > Application type: "Desktop app" secerek olustur.
@@ -206,6 +213,37 @@ ipcMain.handle('get-screen-sources', async () => {
     name: s.name,
     thumbnail: s.thumbnail.toDataURL()
   }));
+});
+
+ipcMain.handle('native-audio-capture-available', () => Boolean(nativeAudioCapture?.isAvailable?.()));
+
+ipcMain.handle('start-native-audio-capture', () => {
+  if (!nativeAudioCapture?.isAvailable?.() || !mainWindow || mainWindow.isDestroyed()) return false;
+
+  try {
+    const rendererPid = mainWindow.webContents.getOSProcessId();
+    if (!Number.isInteger(rendererPid) || rendererPid <= 0) {
+      console.warn('Native sistem sesi yakalama için renderer PID alınamadı.');
+      return false;
+    }
+    nativeAudioCapture.stopCapture();
+    return nativeAudioCapture.startCapture(rendererPid, false, (data, meta) => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      mainWindow.webContents.send('native-audio-data', new Uint8Array(data), meta);
+    });
+  } catch (error) {
+    console.warn('Native sistem sesi yakalama başlatılamadı:', error.message);
+    return false;
+  }
+});
+
+ipcMain.handle('stop-native-audio-capture', () => {
+  try {
+    return Boolean(nativeAudioCapture?.stopCapture?.());
+  } catch (error) {
+    console.warn('Native sistem sesi yakalama durdurulamadı:', error.message);
+    return false;
+  }
 });
 
 // ---- Oturum hatirlama (basit yerel dosya, sadece isim/e-posta) ----

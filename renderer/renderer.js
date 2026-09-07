@@ -54,6 +54,7 @@ const elKatilimciListesiPanel = document.getElementById('katilimciListesiPanel')
 const elModal = document.getElementById('kaynakSecimModal');
 const elKaynakListesi = document.getElementById('kaynakListesi');
 const elBtnKaynakIptal = document.getElementById('btnKaynakIptal');
+const elSistemSesiPaylas = document.getElementById('sistemSesiPaylas');
 const izleyenler = new Map(); // hedefKimlik -> Set(izleyen isimler)
 const sesKontrolKayitlari = new Map(); // trackSid -> { nativeEl, remoteTrack, boosted: null|{context,kaynak,gainNode,boostedEl} }
 
@@ -81,11 +82,69 @@ let aktifKanal = null; // config.js'teki kanal objesi
 let mikrofonAcik = true;
 let ekranPaylasimTrack = null;
 let sistemSesiTrack = null;
+let nativeSistemSesiAudioContext = null;
+let nativeSistemSesiDestination = null;
+let nativeSistemSesiNextTime = 0;
+let nativeSistemSesiAktif = false;
 let izlenenYayinKimlik = null;
 let cihazKimligim = null;
 let sesTercihleri = {}; // { cihazKimligi: seviye }
 let yayinSesSeviyeleri = {}; // { participant.sid -> seviye (0-100) }
 let paylasilanAudioContext = null;
+
+function nativeSistemSesiParcasiniOynat(data, meta) {
+  if (!nativeSistemSesiAktif || !data || !meta?.sampleRate || !meta?.channels) return;
+
+  if (!nativeSistemSesiAudioContext || nativeSistemSesiAudioContext.state === 'closed') {
+    nativeSistemSesiAudioContext = new AudioContext({ sampleRate: meta.sampleRate });
+    nativeSistemSesiDestination = nativeSistemSesiAudioContext.createMediaStreamDestination();
+    nativeSistemSesiNextTime = nativeSistemSesiAudioContext.currentTime;
+  }
+
+  const bytesPerSample = meta.isFloat || meta.bitsPerSample === 32 ? 4 : 2;
+  const buffer = data instanceof Uint8Array ? data : new Uint8Array(data);
+  const frameCount = Math.floor(buffer.byteLength / (meta.channels * bytesPerSample));
+  if (!frameCount) return;
+
+  const audioBuffer = nativeSistemSesiAudioContext.createBuffer(meta.channels, frameCount, meta.sampleRate);
+  const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+  for (let frame = 0; frame < frameCount; frame++) {
+    for (let channel = 0; channel < meta.channels; channel++) {
+      const offset = (frame * meta.channels + channel) * bytesPerSample;
+      const sample = meta.isFloat || meta.bitsPerSample === 32
+        ? view.getFloat32(offset, true)
+        : view.getInt16(offset, true) / 32768;
+      audioBuffer.getChannelData(channel)[frame] = Math.max(-1, Math.min(1, sample));
+    }
+  }
+
+  const source = nativeSistemSesiAudioContext.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(nativeSistemSesiDestination);
+  const now = nativeSistemSesiAudioContext.currentTime;
+  nativeSistemSesiNextTime = Math.max(nativeSistemSesiNextTime, now + 0.02);
+  source.start(nativeSistemSesiNextTime);
+  nativeSistemSesiNextTime += audioBuffer.duration;
+}
+
+function nativeSistemSesiDurdur() {
+  nativeSistemSesiAktif = false;
+  nativeSistemSesiNextTime = 0;
+  nativeSistemSesiDestination = null;
+  if (nativeSistemSesiAudioContext && nativeSistemSesiAudioContext.state !== 'closed') {
+    nativeSistemSesiAudioContext.close().catch(() => {});
+  }
+  nativeSistemSesiAudioContext = null;
+}
+
+window.electronAPI.onNativeAudioData(nativeSistemSesiParcasiniOynat);
+
+function nativeSistemSesiHazirla() {
+  nativeSistemSesiAudioContext = new AudioContext();
+  nativeSistemSesiDestination = nativeSistemSesiAudioContext.createMediaStreamDestination();
+  nativeSistemSesiNextTime = nativeSistemSesiAudioContext.currentTime;
+  nativeSistemSesiAktif = true;
+}
 
 function paylasilanContextAl() {
   if (!paylasilanAudioContext || paylasilanAudioContext.state === 'closed') {
@@ -1141,6 +1200,10 @@ async function ekranPaylasimiDurdur(oda = room) {
     await oda.localParticipant.unpublishTrack(eskiSesTrack).catch(() => {});
   }
   eskiSesTrack?.stop();
+  if (nativeSistemSesiAktif) {
+    await window.electronAPI.stopNativeAudioCapture();
+    nativeSistemSesiDurdur();
+  }
 
   elBtnEkranPaylas.classList.remove('aktif-kapali');
   if (!eskiVideoTrack && !eskiSesTrack) return;
@@ -1176,27 +1239,13 @@ async function kaynakSecildi(kaynakId) {
 
     let stream;
     let sistemSesiVarMi = false;
-    try {
-      // Once ses + goruntuyu birlikte iste (sadece "Tum Ekran" secilirse calisir)
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { mandatory: { chromeMediaSource: 'desktop' } },
-        video: videoConstraints
-      });
-      sistemSesiVarMi = stream.getAudioTracks().length > 0;
-    } catch (sesHatasi) {
-      // Ses alinamadi (ornegin tek bir pencere secildi) - sadece goruntu ile devam et
-      console.warn('Sistem sesi alinamadi, sadece goruntu paylasilacak.', sesHatasi);
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: videoConstraints
-      });
-    }
+    stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: videoConstraints });
 
     const mediaTrack = stream.getVideoTracks()[0];
     mediaTrack.onended = () => elBtnEkranPaylas.click();
 
     const gercekAyar = mediaTrack.getSettings();
-    console.log('İstenen:', width + 'x' + height, '| Gerçek:', gercekAyar.width + 'x' + gercekAyar.height, '| FPS:', gercekAyar.frameRate, '| Sistem sesi:', sistemSesiVarMi);
+    console.log('İstenen:', width + 'x' + height, '| Gerçek:', gercekAyar.width + 'x' + gercekAyar.height, '| FPS:', gercekAyar.frameRate, '| Sistem sesi hazırlığı:', elSistemSesiPaylas.checked ? 'native capture deneniyor' : 'kapalı');
 
     ekranPaylasimTrack = new LivekitClient.LocalVideoTrack(mediaTrack);
     await room.localParticipant.publishTrack(ekranPaylasimTrack, {
@@ -1209,18 +1258,37 @@ async function kaynakSecildi(kaynakId) {
       }
     });
 
-    if (sistemSesiVarMi) {
-      const sesTrack = stream.getAudioTracks()[0];
-      sistemSesiTrack = new LivekitClient.LocalAudioTrack(sesTrack);
-      await room.localParticipant.publishTrack(sistemSesiTrack, {
-        source: Track.Source.ScreenShareAudio,
-        name: 'screenAudio'
-      });
+    if (elSistemSesiPaylas.checked) {
+      const nativeAvailable = await window.electronAPI.nativeAudioCaptureAvailable();
+      if (nativeAvailable) {
+        nativeSistemSesiHazirla();
+        const nativeStarted = await window.electronAPI.startNativeAudioCapture();
+        if (nativeStarted) {
+          const nativeTrack = nativeSistemSesiDestination.stream.getAudioTracks()[0];
+          sistemSesiTrack = new LivekitClient.LocalAudioTrack(nativeTrack);
+          await room.localParticipant.publishTrack(sistemSesiTrack, {
+            source: Track.Source.ScreenShareAudio,
+            name: 'screenAudio'
+          });
+          sistemSesiVarMi = true;
+          console.log('İzole sistem sesi yakalama başladı; Funnel Talk sesi hariç tutuluyor.');
+        } else {
+          nativeSistemSesiDurdur();
+        }
+      }
+      if (!sistemSesiVarMi) {
+        console.warn('İzole sistem sesi yakalama başlatılamadı; yalnızca görüntü yayınlanıyor.');
+      }
     }
 
     elBtnEkranPaylas.classList.add('aktif-kapali');
     document.getElementById('sesYayinBasladi').play().catch(() => {});
   } catch (err) {
+    if (nativeSistemSesiAktif) {
+      await window.electronAPI.stopNativeAudioCapture().catch(() => {});
+      nativeSistemSesiDurdur();
+    }
+    sistemSesiTrack = null;
     console.error('Ekran paylaşımı başlatılamadı', err);
   }
 }
