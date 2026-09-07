@@ -80,6 +80,7 @@ let ayarlar = null;
 let room = null;
 let aktifKanal = null; // config.js'teki kanal objesi
 let kanalGecisKuyrugu = Promise.resolve();
+let kanalGecisiDevamEdiyor = false;
 let cevrimiciListeGuncelleniyor = false;
 let mikrofonAcik = true;
 let ekranPaylasimTrack = null;
@@ -624,9 +625,12 @@ function sesMeterPaneliniGöster(göster) {
 }
 
 async function kanalaGec(kanal) {
+  if (kanalGecisiDevamEdiyor) return;
+  kanalGecisiDevamEdiyor = true;
   kanalGecisKuyrugu = kanalGecisKuyrugu
     .catch((error) => console.error('Önceki kanal geçişi başarısız oldu:', error))
-    .then(() => kanalaGecIslemi(kanal));
+    .then(() => kanalaGecIslemi(kanal))
+    .finally(() => { kanalGecisiDevamEdiyor = false; });
   return kanalGecisKuyrugu;
 }
 
