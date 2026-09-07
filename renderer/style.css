@@ -212,7 +212,7 @@ body {
 .buton-ikon.aktif-acik { background: var(--vurgu); }
 
 .govde { display: flex; flex: 1; min-height: 0; }
-.katilimcilar { width: 260px; padding: 16px; overflow-y: auto; border-right: 1px solid var(--kenar); }
+.katilimcilar { margin-right:auto; width: 260px; padding: 16px; overflow-y: auto; border-right: 1px solid var(--kenar); }
 .yayin-alani { position: relative; flex: 1; display: flex; align-items: center; justify-content: center; background: #000; min-width: 0; overflow: hidden; z-index: 1; }
 .yayin-alani video { position: relative; max-width: 100%; max-height: 100%; z-index: 0; }
 
@@ -270,7 +270,6 @@ body {
   color: var(--metin);
 }
 .sohbet-giris button {
-  padding: 10px 14px;
   background: var(--vurgu);
   border: none;
   color: #fff;
@@ -697,10 +696,6 @@ body {
 }
 
 .katilimci-listesi-panel {
-  /*position: fixed;*/
-  right: 0;
-  top: 0;
-  bottom: 0;
   width: 220px;
   background: var(--bg-3);
   border-left: 1px solid var(--kenar);
