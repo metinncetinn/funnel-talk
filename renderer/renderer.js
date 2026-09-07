@@ -79,6 +79,8 @@ let esikOlcumInterval = null;
 let ayarlar = null;
 let room = null;
 let aktifKanal = null; // config.js'teki kanal objesi
+let kanalGecisKuyrugu = Promise.resolve();
+let cevrimiciListeGuncelleniyor = false;
 let mikrofonAcik = true;
 let ekranPaylasimTrack = null;
 let sistemSesiTrack = null;
@@ -391,35 +393,52 @@ async function init() {
   dilUygula(ayarlar.dil || 'tr');
   setInterval(() => {
     cevrimiciListesiGuncelle();
-  }, 3000);
+  }, 60000);
 
   async function cevrimiciListesiGuncelle() {
+    if (cevrimiciListeGuncelleniyor) return;
+    cevrimiciListeGuncelleniyor = true;
     const elCevrimici = document.getElementById('cevrimiciListesi');
-    if (!elCevrimici) return;
+    if (!elCevrimici) {
+      cevrimiciListeGuncelleniyor = false;
+      return;
+    }
 
-    const sonuc = await Promise.all(window.APP_CONFIG.CHANNELS.map(async (kanal) => {
-      try {
-        const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
-        if (!resp.ok) return [];
-        const isimler = await resp.json();
-        return isimler.map((ad) => ({ ad, kanal: kanal.name }));
-      } catch {
-        return [];
+    try {
+      const sonuc = await Promise.all(window.APP_CONFIG.CHANNELS.map(async (kanal) => {
+        try {
+          const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
+          if (!resp.ok) return [];
+          const isimler = await resp.json();
+          return isimler.map((ad) => ({ ad, kanal: kanal.name }));
+        } catch {
+          return [];
+        }
+      }));
+      const gorulenIsimler = new Set();
+      const cevrimiciKisiler = sonuc.flat().filter((kisi) => {
+        const anahtar = String(kisi.ad).trim().toLocaleLowerCase('tr-TR');
+        if (gorulenIsimler.has(anahtar)) return false;
+        gorulenIsimler.add(anahtar);
+        return true;
+      });
+
+      elCevrimici.innerHTML = '';
+      cevrimiciKisiler.forEach((kisi) => {
+        const div = document.createElement('div');
+        div.className = 'cevrimici-ogesi aktif';
+        div.textContent = `🟢 ${kisi.ad} · ${kisi.kanal}`;
+        elCevrimici.appendChild(div);
+      });
+
+      const panel = document.getElementById('katilimciListesiPanel');
+      if (cevrimiciKisiler.length > 0) {
+        panel.classList.remove('gizli');
+      } else {
+        panel.classList.add('gizli');
       }
-    }));
-    const cevrimiciKisiler = sonuc.flat();
-
-    elCevrimici.innerHTML = '';
-    cevrimiciKisiler.forEach((kisi) => {
-      const div = document.createElement('div');
-      div.className = 'cevrimici-ogesi aktif';
-      div.textContent = `🟢 ${kisi.ad} · ${kisi.kanal}`;
-      elCevrimici.appendChild(div);
-    });
-
-    const panel = document.getElementById('katilimciListesiPanel');
-    if (cevrimiciKisiler.length > 0) {
-      panel.classList.remove('gizli');
+    } finally {
+      cevrimiciListeGuncelleniyor = false;
     }
   }
   const googleVarMi = await window.electronAPI.isGoogleLoginAvailable();
@@ -499,6 +518,7 @@ function uygulamayaGec() {
 
 // ---- Kanal listesi (sol menü) ----
 let kanalKatilimciElementleri = []; // { kanal, element } listesi, periyodik yenileme icin
+let kanalListesiGuncelleniyor = false;
 
 function kanalListesiniCiz() {
   elKanalListesi.innerHTML = '';
@@ -535,10 +555,25 @@ function kanalListesiniCiz() {
 }
 
 async function tumKanalKatilimcilariniGuncelle() {
-  for (const { kanal, element } of kanalKatilimciElementleri) {
+  if (kanalListesiGuncelleniyor) return;
+  kanalListesiGuncelleniyor = true;
+  const gorulenIsimler = new Set();
+  const siraliKanalElementleri = [...kanalKatilimciElementleri].sort((a, b) => {
+    const aktifA = a.kanal.name === aktifKanal?.name ? 0 : 1;
+    const aktifB = b.kanal.name === aktifKanal?.name ? 0 : 1;
+    return aktifA - aktifB;
+  });
+
+  try {
+    for (const { kanal, element } of siraliKanalElementleri) {
     try {
       const resp = await fetch(`${window.APP_CONFIG.TOKEN_SERVER_URL}/katilimcilar/${encodeURIComponent(kanal.name)}`);
-      const isimler = await resp.json();
+      const isimler = (await resp.json()).filter((ad) => {
+        const anahtar = String(ad).trim().toLocaleLowerCase('tr-TR');
+        if (gorulenIsimler.has(anahtar)) return false;
+        gorulenIsimler.add(anahtar);
+        return true;
+      });
       element.replaceChildren();
       if (isimler.length === 0) {
         const bos = document.createElement('span');
@@ -561,14 +596,17 @@ async function tumKanalKatilimcilariniGuncelle() {
       element.appendChild(hata);
     }
   }
+  } finally {
+    kanalListesiGuncelleniyor = false;
+  }
 }
 
-// Sidebar acikken kanal listelerini 5 saniyede bir tazele
+// Kanal katilimci listelerini bir dakikada bir tazele
 setInterval(() => {
   if (!elAppEkran.classList.contains('gizli') && kanalKatilimciElementleri.length > 0) {
     tumKanalKatilimcilariniGuncelle();
   }
-}, 5000);
+}, 60000);
 
 function sesMeterPaneliniGöster(göster) {
   const elPanel = document.getElementById('sesLevelPanel');
@@ -586,7 +624,14 @@ function sesMeterPaneliniGöster(göster) {
 }
 
 async function kanalaGec(kanal) {
-  if (aktifKanal?.name === kanal.name) return;
+  kanalGecisKuyrugu = kanalGecisKuyrugu
+    .catch((error) => console.error('Önceki kanal geçişi başarısız oldu:', error))
+    .then(() => kanalaGecIslemi(kanal));
+  return kanalGecisKuyrugu;
+}
+
+async function kanalaGecIslemi(kanal) {
+  if (aktifKanal?.name === kanal.name && room) return;
 
   if (room) {
     const eskiRoom = room;
