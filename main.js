@@ -221,13 +221,12 @@ ipcMain.handle('start-native-audio-capture', () => {
   if (!nativeAudioCapture?.isAvailable?.() || !mainWindow || mainWindow.isDestroyed()) return false;
 
   try {
-    const rendererPid = mainWindow.webContents.getOSProcessId();
-    if (!Number.isInteger(rendererPid) || rendererPid <= 0) {
-      console.warn('Native sistem sesi yakalama için renderer PID alınamadı.');
-      return false;
-    }
+    // Exclude mode uses PROCESS_LOOPBACK_MODE_EXCLUDE_TARGET_PROCESS_TREE, which excludes
+    // the given PID and its whole process tree. gpu-process/utility/renderer are children
+    // of the main process, not of each other — so we must pass the main PID (the tree root),
+    // otherwise sibling processes (e.g. soundboard/notification audio) leak into the capture.
     nativeAudioCapture.stopCapture();
-    return nativeAudioCapture.startCapture(rendererPid, false, (data, meta) => {
+    return nativeAudioCapture.startCapture(process.pid, false, (data, meta) => {
       if (!mainWindow || mainWindow.isDestroyed()) return;
       mainWindow.webContents.send('native-audio-data', new Uint8Array(data), meta);
     });
