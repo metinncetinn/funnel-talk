@@ -340,6 +340,7 @@ Completed:
 - [x] Admin/author message deletion (with file cleanup)
 - [x] Token server + LiveKit access token generation
 - [x] Load message history when switching channels
+- [x] Computer audio support for screen sharing
 
 Planned features:
 - [ ] Support for watching multiple simultaneous streams
