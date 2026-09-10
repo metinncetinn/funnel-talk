@@ -339,6 +339,7 @@ Tamamlananlar:
 - [x] Admin tarafından mesaj silme yetkisi (dosya dahil temizleme)
 - [x] Token sunucusu + LiveKit erişim jetonu üretimi
 - [x] Kanal değişildiğinde mesaj geçmişi yükleme
+- [x] Ekran paylaşımında bilgisayar sesi desteği 
 
 Gelecek hedefler:
 - [ ] Çoklu eş zamanlı yayın izleme desteği
