@@ -687,7 +687,7 @@ async function kanalaGecIslemi(kanal) {
     await room.connect(url, token, { autoSubscribe: false });
     room.remoteParticipants.forEach((katilimci) => {
       katilimci.audioTrackPublications.forEach((pub) => {
-        if (pub.source === Track.Source.Microphone) pub.setSubscribed(true);
+        if (pub.source === Track.Source.Microphone || pub.trackName === 'sesPaneli') pub.setSubscribed(true);
       });
     });
 
@@ -749,7 +749,7 @@ function baglaOlayDinleyicileri() {
 
   room.on(RoomEvent.TrackPublished, (publication, participant) => {
     if (publication.kind === Track.Kind.Audio) {
-      if (publication.source === Track.Source.Microphone) {
+      if (publication.source === Track.Source.Microphone || publication.trackName === 'sesPaneli') {
         publication.setSubscribed(true);
       } else if (publication.source === Track.Source.ScreenShareAudio) {
         // Ekran sesi izleme onayına bağlı: bu kişinin yayınını zaten izliyorsak sesini de otomatik ekle
