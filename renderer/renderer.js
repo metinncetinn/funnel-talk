@@ -66,7 +66,8 @@ let mikrofonAnalyserNode = null;
 let mikrofonGainNode = null;
 let mikrofonLimiterNode = null;
 let sesPaneliAudioContext = null;
-let sesPaneliGainNode = null;
+let sesPaneliGainNode = null; // yerel dinleme (kendi ayarım)
+let sesPaneliYayinGainNode = null; // digerlerine giden, sabit seviyeli
 let sesPaneliDestination = null;
 let sesPaneliTrack = null;
 let sesPaneliYerelMonitorEl = null;
@@ -373,6 +374,16 @@ function tumSesSeviyeleriniYenile() {
       (p) => p.source === Track.Source.Microphone
     );
     if (mikrofonYayini) sesSeviyesiUygula(mikrofonYayini.trackSid, oran);
+  });
+  sesPaneliAliciSeviyesiniYenile();
+}
+
+// Soundboard sesi "Ses Paneli Seviyesi" ayarı değişince, halihazırda çalan/subscribe olunmuş
+// soundboard track'lerinin dinleyicideki seviyesini hemen günceller.
+function sesPaneliAliciSeviyesiniYenile() {
+  const oran = (ayarlar.sesPaneliSeviyesi ?? 100) / 100;
+  sesKontrolKayitlari.forEach((kayit, trackSid) => {
+    if (kayit.trackName === 'sesPaneli') sesSeviyesiUygula(trackSid, oran);
   });
 }
 
@@ -790,11 +801,14 @@ function baglaOlayDinleyicileri() {
       sesKontrolKayitlari.set(publication.trackSid, {
         nativeEl: el,
         remoteTrack: track,
+        trackName: publication.trackName,
         boosted: null
       });
 
-      const kimlik = katilimciKimligi(participant);
-      const kayitliOran = sesTercihleri[kimlik] ?? 1;
+      // Soundboard sesi: basan kişinin değil, dinleyenin kendi "Ses Paneli Seviyesi" ayarına göre çal.
+      const kayitliOran = publication.trackName === 'sesPaneli'
+        ? (ayarlar.sesPaneliSeviyesi ?? 100) / 100
+        : (sesTercihleri[katilimciKimligi(participant)] ?? 1);
       sesSeviyesiUygula(publication.trackSid, kayitliOran);
     } else if (track.kind === Track.Kind.Video && publication.source === Track.Source.ScreenShare) {
       track.attach(elYayinVideo);
@@ -1157,13 +1171,17 @@ function mikrofonuDurdurVeTemizle() {
 async function sesPaneliBaslat() {
   try {
     sesPaneliAudioContext = paylasilanContextAl();
+    // Yayına giden ses sabit seviyede olmalı; herkes kendi "Ses Paneli Seviyesi" ayarıyla dinler.
+    sesPaneliYayinGainNode = sesPaneliAudioContext.createGain();
+    sesPaneliYayinGainNode.gain.value = 1;
+    // Yerel dinleme (kendi kulaklığım) kişisel ayarımı yansıtır.
     sesPaneliGainNode = sesPaneliAudioContext.createGain();
     sesPaneliGainNode.gain.value = (ayarlar.sesPaneliSeviyesi ?? 100) / 100;
 
     sesPaneliDestination = sesPaneliAudioContext.createMediaStreamDestination(); // digerlerine gidecek
     const yerelDestination = sesPaneliAudioContext.createMediaStreamDestination(); // kendi hoparlorune gidecek
 
-    sesPaneliGainNode.connect(sesPaneliDestination);
+    sesPaneliYayinGainNode.connect(sesPaneliDestination);
     sesPaneliGainNode.connect(yerelDestination);
 
     sesPaneliYerelMonitorEl = new Audio();
@@ -1194,11 +1212,12 @@ function sesPaneliDurdur() {
   }
   sesPaneliAudioContext = null;
   sesPaneliGainNode = null;
+  sesPaneliYayinGainNode = null;
   sesPaneliDestination = null;
 }
 
 async function sesCal(sesUrl) {
-  if (!sesPaneliAudioContext || !sesPaneliGainNode) return;
+  if (!sesPaneliAudioContext || !sesPaneliGainNode || !sesPaneliYayinGainNode) return;
   try {
     const resp = await fetch(sesUrl);
     const arrayBuffer = await resp.arrayBuffer();
@@ -1206,6 +1225,7 @@ async function sesCal(sesUrl) {
     const kaynak = sesPaneliAudioContext.createBufferSource();
     kaynak.buffer = audioBuffer;
     kaynak.connect(sesPaneliGainNode);
+    kaynak.connect(sesPaneliYayinGainNode);
     kaynak.start();
   } catch (e) {
     console.warn('Ses çalınamadı', e);
@@ -2046,6 +2066,7 @@ elAyarSesPaneliSeviyesi.addEventListener('input', async () => {
   if (sesPaneliYerelMonitorEl) {
     sesPaneliYerelMonitorEl.volume = 1; // gain node zaten seviyeyi ayarlıyor, element sabit 1 kalmalı
   }
+  sesPaneliAliciSeviyesiniYenile();
   await ayarlariKaydet();
 });
 
