@@ -160,11 +160,6 @@
           <label style="margin-top: 12px;" data-i18n="anaSesSeviyesi">Ana Ses Seviyesi</label>
           <input id="ayarAnaSesSeviyesi" type="range" min="0" max="100" value="100" />
           <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Tüm seslerin genel ses seviyesi (arkadaşların sesi, ses paneli, bildirim sesleri)</p>
-        
-          <label style="margin-top: 12px;" data-i18n="sesPaneliSesi">Ses Paneli Sesi</label>
-          <input id="ayarSesPaneliSeviyesi" type="range" min="0" max="100" value="100" />
-          <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Ses panelindeki efekt seslerinin seviyesi</p>
-
           <label style="margin-top: 14px; display: flex; align-items: center; gap: 8px;">
             <input id="ayarGurultuSuppression" type="checkbox" />
             <span data-i18n="gurultuEngelleme">Gürültü Engelleme (Noise Cancellation)</span>
@@ -206,6 +201,9 @@
   <div id="sesPaneliModal" class="modal gizli">
     <div class="modal-kutu ses-paneli-kutu">
       <h3 data-i18n="sesPaneliBaslik">Ses Paneli</h3>
+      <label for="ayarSesPaneliSeviyesi" data-i18n="sesPaneliSesi">Ses Paneli Sesi</label>
+      <input id="ayarSesPaneliSeviyesi" type="range" min="0" max="100" value="100" />
+      <p style="font-size: 11px; color: var(--metin-soluk); margin-top: 4px;">Ses panelindeki efekt seslerinin seviyesi</p>
       <div id="sesPaneliGrid" class="ses-paneli-grid"></div>
       <div class="ses-ekle-alani">
         <input id="yeniSesIsim" type="text" data-i18n-placeholder="sesIsimPlaceholder" placeholder="İsim (emoji olabilir, max 15 karakter)" maxlength="15" />
