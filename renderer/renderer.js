@@ -1597,6 +1597,29 @@ function sohbetMesajIceriginiHazirla(metin) {
   return fragman;
 }
 
+function sohbetZamaniniBicimlendir(zaman) {
+  if (!zaman) return '';
+  const tarih = new Date(zaman);
+  if (Number.isNaN(tarih.getTime())) return '';
+
+  const locale = ayarlar.dil === 'en' ? 'en-US' : 'tr-TR';
+  const saat = tarih.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  const bugun = new Date();
+  bugun.setHours(0, 0, 0, 0);
+  const dun = new Date(bugun);
+  dun.setDate(dun.getDate() - 1);
+
+  if (tarih >= bugun) return saat;
+  if (tarih >= dun) return `${t('dun')} ${saat}`;
+
+  const tarihMetni = tarih.toLocaleDateString(locale, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+  return `${tarihMetni} ${saat}`;
+}
+
 function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
   const div = document.createElement('div');
   div.className = 'sohbet-mesaj';
@@ -1604,7 +1627,7 @@ function sohbetMesajiEkle(yazar, metin, benMi, payload = null) {
 
   const yazarEl = document.createElement('div');
   yazarEl.className = 'yazar';
-  const zamanStr = payload?.zaman ? new Date(payload.zaman).toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'}) : '';
+  const zamanStr = sohbetZamaniniBicimlendir(payload?.zaman);
   yazarEl.textContent = `${yazar}${benMi ? ' (sen)' : ''} ${zamanStr ? '• ' + zamanStr : ''}`;
 
   const metinEl = document.createElement('div');
